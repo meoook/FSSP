@@ -2,7 +2,7 @@
 import smtplib
 # Import the email modules we'll need
 from email.message import EmailMessage
-
+aaaaaaaaaaaaaaaaaaaaaaaaaaaa
 HOST = "mail.it2g.ru"
 SMTP = 'eps-relay01.mos.ru'
 PORT = 25
