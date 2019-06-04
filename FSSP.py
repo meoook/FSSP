@@ -6,12 +6,7 @@ import os
 
 
 ''' CONFIG asd asd ads fasdfa sdfa sdfa sdf asd'''
-USERRR = 'asdasasdasdadas'
-SERRR = 'asdasasdasdadas'
-ERRR = 'asdasasdasdadas'
-RRR = 'asdasasdasdadas'
-RR = 'asdasasdasdadas'
-R = 'asdasasdasdadas'
+new_param = 'new param'
 # PROGRAM CONFIG4
 PAUSE = 15                  # Интервал в секундах между запросами (в случае если task не выполнена)
 PARSE_FILE = False          # Будет ли парсится файл? (FILENAME)
