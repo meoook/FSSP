@@ -5,7 +5,7 @@ import psycopg2
 import os
 
 
-''' CONFIG asd asd ads fasdfa sdfa sdfa sdf asd'''
+''' CONFIG '''
 new_param = 'new param'
 # PROGRAM CONFIG4
 PAUSE = 15                  # Интервал в секундах между запросами (в случае если task не выполнена)
@@ -23,15 +23,15 @@ LOG_TO_FILE = True          # Сохранять в файл
 LOG_LVL = 1                 # 1 - Critical, 2 - data err, 3 - info(all))
 LOG_FILE_NAME = DIR + LOG_DIR + '\\' + 'fssp_' + time.strftime("%d.%m.%y", time.localtime()) + '.log'
 # PG_SQL CONFIG
-# PG_HOST = '172.17.75.4'
-# PG_USER = 'fssp_read'
-# PG_PWD = '1234'
-# PG_DB_NAME = 'ums'
+PG_HOST = '172.17.75.4'
+PG_USER = 'fssp_read'
+PG_PWD = '1234'
+PG_DB_NAME = 'ums'
 # HOME
-PG_HOST = 'localhost'
-PG_USER = 'postgres'
-PG_PWD = '111'
-PG_DB_NAME = 'skuns'
+PG_HOST_HOME = 'localhost'
+PG_USER_HOME = 'postgres'
+PG_PWD_HOME = '111'
+PG_DB_NAME_HOME = 'skuns'
 # FSSP CONFIG
 TOKEN = 'k51UxJdRmtyZ'      # Токен, ключик без которого ничего не работает
 BASE_URL = 'https://api-ip.fssprus.ru/api/v1.0/'
@@ -53,7 +53,7 @@ def chk_paths():
         print('Main folder', DIR, 'exist - OK')
     if not os.path.isfile(DIR + RES_FILENAME) or RES_FILE_RENEW:
         print("Creating result file", DIR + RES_FILENAME)
-        with open(DIR + RES_FILENAME, "w") as filo:
+        with open(DIR + RES_FILENAME, "w") as filo:     # Переделать в TRY
             topline = ['Время', 'Адрес', 'участок', 'Реестр', 'Контрольная сумма',
                        'комментарий', 'задержан', 'сумма штрафов']
             sep = "\t" if TAB_SEPARATOR else ";"
@@ -119,23 +119,15 @@ def write_csv(xlsx_array):
         to_log('Success write results to file.')
 
 
-    with open(DIR + RES_FILENAME, "a") as filo:
-        for row in xlsx_array:
-            sep = "\t" if TAB_SEPARATOR else ";"
-            frow = sep.join(map(str, row))
-            to_log('Write to file: ' + frow)  # TO LOG
-            filo.write(frow + "\n")
-
-
 # SQL: Запрос нарушителей за\с сегодня\дату
 def sql_req_home(date='xx', znak='eq'):
     conn = None
     rows = []
     try:
-        conn = psycopg2.connect(host=PG_HOST,
-                                user=PG_USER,
-                                password=PG_PWD,
-                                database=PG_DB_NAME)
+        conn = psycopg2.connect(host=PG_HOST_HOME,
+                                user=PG_USER_HOME,
+                                password=PG_PWD_HOME,
+                                database=PG_DB_NAME_HOME)
         cur = conn.cursor()
         # Делаем SELECT
         select = "SELECT upper(lastname), upper(firstname), upper(secondname), to_char(birthday, 'DD.MM.YYYY'), " \
@@ -391,7 +383,8 @@ def violation_calc(sub_task):
 chk_paths()
 
 # Получаем массив бандитов из БД - если не указанна дата, то за сегодня
-req_arr = sql_req_home('25.05.2019', znak='eq')
+#req_arr = sql_req_home('25.05.2019', znak='eq')
+req_arr = sql_req(znak='eq')
 
 
 ''' 
@@ -402,7 +395,7 @@ req_arr = sql_req_home('25.05.2019', znak='eq')
     для Юр.Лиц: ARRAY = [["OOO Качан", "Ул. Кочерышка"],["OOO Выходи", "Ул. Выходная"]]
     для Физ:    ARRAY = [['СААПАПЕВ', 'ДЕНИС', 'АНДРЕЕВИЧ', '12.02.1994'],["АГИ", "РОМАН", "АШЕВИЧ", "11.02.1994"]]
 '''
-''' DEBUG '''
+''' DEBUG ''''''
 req_arr.append(("", "", "", ""))    # For ERROR TEST
 # For double test
 req_arr.append(("АГЕВ", "РОМН", "АНЕЕВИЧ", "22.02.2004", "xxx", "194", "194", "194", "194", "194", "1994", "14", "14"))
@@ -414,7 +407,7 @@ req_arr.append("65094/16/77024-ИП")
 req_arr.append("1425628/16/77043-ИП")
 req_arr.append("65094/16/77024-ИП")
 req_arr.append("65094/16/77024-ИП")
-''' DEBUG END '''
+'''''' DEBUG END '''
 
 # Удаляем дубли запроса
 req = chk_req_arr(req_arr)
