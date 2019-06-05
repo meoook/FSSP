@@ -19,14 +19,19 @@ REQ_FILENAME = 'fssp.txt'   # Файл который будет парсить�
 # LOG CONFIG
 LOG_DIR = 'Logs'            # Папка для логов
 LOG_ECHO = True             # Вывод логов на экран
-LOG_TO_FILE = False         # Сохранять в файл
+LOG_TO_FILE = True          # Сохранять в файл
 LOG_LVL = 1                 # 1 - Critical, 2 - data err, 3 - info(all))
-LOG_FILE_NAME = DIR + LOG_DIR + '\\' + 'fssp_' + time.strftime("%d.%m.%y", time.gmtime()) + '.log'
+LOG_FILE_NAME = DIR + LOG_DIR + '\\' + 'fssp_' + time.strftime("%d.%m.%y", time.localtime()) + '.log'
 # PG_SQL CONFIG
-PG_HOST = '172.17.75.4'
-PG_USER = 'fssp_read'
-PG_PWD = '1234'
-PG_DB_NAME = 'ums'
+# PG_HOST = '172.17.75.4'
+# PG_USER = 'fssp_read'
+# PG_PWD = '1234'
+# PG_DB_NAME = 'ums'
+# HOME
+PG_HOST = 'localhost'
+PG_USER = 'postgres'
+PG_PWD = '111'
+PG_DB_NAME = 'skuns'
 # FSSP CONFIG
 TOKEN = 'k51UxJdRmtyZ'      # Токен, ключик без которого ничего не работает
 BASE_URL = 'https://api-ip.fssprus.ru/api/v1.0/'
@@ -64,7 +69,7 @@ def chk_paths():
             print('Log folder', DIR + LOG_DIR, 'exist - OK')
         if not os.path.isfile(LOG_FILE_NAME):
             with open(LOG_FILE_NAME, "w") as filo:
-                filo.write(time.strftime("%d.%m.%y %H:%M:%S", time.gmtime())+': Created file log '+LOG_FILE_NAME+'\n')
+                filo.write(time.strftime("%d.%m.%y %H:%M:%S", time.localtime())+': Created file log '+LOG_FILE_NAME+'\n')
                 print('Creating log file', LOG_FILE_NAME)
         else:
             print('Log file', LOG_FILE_NAME, 'exist - OK')
@@ -87,7 +92,7 @@ def to_log(msg: str, deep_lvl: int = 3):
         msg = '[ERR] ' + msg
     else:
         msg = '[INFO] ' + msg
-    msg = time.strftime("%d.%m.%y %H:%M:%S", time.gmtime()) + ' ' + msg
+    msg = time.strftime("%d.%m.%y %H:%M:%S", time.localtime()) + ' ' + msg
     if LOG_ECHO:
         print(msg)
     if LOG_TO_FILE:
@@ -120,6 +125,35 @@ def write_csv(xlsx_array):
             frow = sep.join(map(str, row))
             to_log('Write to file: ' + frow)  # TO LOG
             filo.write(frow + "\n")
+
+
+# SQL: Запрос нарушителей за\с сегодня\дату
+def sql_req_home(date='xx', znak='eq'):
+    conn = None
+    rows = []
+    try:
+        conn = psycopg2.connect(host=PG_HOST,
+                                user=PG_USER,
+                                password=PG_PWD,
+                                database=PG_DB_NAME)
+        cur = conn.cursor()
+        # Делаем SELECT
+        select = "SELECT upper(lastname), upper(firstname), upper(secondname), to_char(birthday, 'DD.MM.YYYY'), " \
+                 "to_char(creation_date, 'DD.MM.YYYY hh24:mi:ss'), court_adr, court_numb, reestr, " \
+                 "md5(concat(upper(lastname), upper(firstname), upper(secondname), to_char(birthday, 'DD.MM.YYYY'))) " \
+                 "FROM fssp as v WHERE creation_date::date "
+        select += "=" if znak == 'eq' else ">="
+        select += "current_date " if date == 'xx' else "'" + date + "'"  # Нужна проверочка - что date соответсвует формату
+        cur.execute(select)
+        rows = cur.fetchall()  # Return
+        # TO LOG?: cur.rowcount
+        cur.close()
+    except psycopg2.Error as error:
+        to_log('SQL ERROR: ' + str(error), 1)  # SQL ERROR select
+    finally:
+        if conn is not None:
+            conn.close()
+        return rows
 
 
 # SQL: Запрос нарушителей за\с сегодня\дату
@@ -160,7 +194,7 @@ def sql_req(date='xx', znak='eq'):
 
 
 # Запрос по task_uuid - получить результат\статус
-def get_req(task_uuid, status='result'):
+def get_uuid_req(task_uuid, status='result'):
     if task_uuid:
         url = BASE_URL + RESULT_URL if status == 'result' else BASE_URL + STATUS_URL
         params = {"token": TOKEN, "task": task_uuid}
@@ -187,9 +221,9 @@ def get_uuid(req_array):
         typo = len(elem)
         if isinstance(elem, str):  # Поиск по ИП
             subtask_js = {"type": 3, "params": {"number": elem}}
-        elif typo == 2:  # Поиск по имени и адресу - Юрики
+        elif typo == 2:             # Поиск по имени и адресу - Юрики
             subtask_js = {"type": 2, "params": {"name": elem[0], "address": elem[1], "region": 77}}
-        elif 3 < typo < 10:  # Поиск по ФИО+ДР
+        elif 3 < typo < 10:         # Поиск по ФИО+ДР
             subtask_js = {"type": 1,
                           "params": {"firstname": elem[1],
                                      "lastname": elem[0],
@@ -202,7 +236,6 @@ def get_uuid(req_array):
             subtask_js = False
         reqst["request"].append(subtask_js)
 
-    # TO LOG: req
     url = BASE_URL + GROUP_URL
     response = requests.post(url=url, json=reqst)
     if chk_resp(response):
@@ -214,14 +247,14 @@ def get_uuid(req_array):
 
 
 # Проверка пока не выполнится TASK
-def get_finish(task_uuid):
+def get_uuid_finish(task_uuid):
     if task_uuid is False:
         to_log('No task to check status. Task UUID error.', 2)
         return False
     to_log('Getting result for tasks. Wait while finish! Task UUID: ' + task_uuid)
     time.sleep(PAUSE / 3)
     while True:
-        status = get_req(task_uuid, 'status')
+        status = get_uuid_req(task_uuid, 'status')
         if status is False:
             to_log('Task status error. Task_UUID: ' + task_uuid, 2)
             return False
@@ -239,11 +272,10 @@ def get_finish(task_uuid):
 
 
 # Вывод результата
-def get_result(task_uuid):
+def get_uuid_result(task_uuid):
     result = []
-    json_resp = get_req(task_uuid)
+    json_resp = get_uuid_req(task_uuid)
     if json_resp is False:
-        to_log('Getting result for task with ERROR. Task_UUID: ' + uuid, 2)
         return False
     for sub_task in json_resp:
         calc = violation_calc(sub_task)
@@ -307,6 +339,33 @@ def chk_req_arr(ar):
     return arc
 
 
+# Подготавливаем массив для выгрузки в xlsx
+def xlsx_arr(request_array, result_array):
+    ff = []
+    counter = 0
+    to_log('Requests count: ' + str(len(request_array)) + ". Beware, non SQL requests don't save in result file!!!")
+    for reqst in request_array:
+        for res in result_array:
+            typo = len(reqst)
+            if isinstance(reqst, str) and res[0] == 3:  # для номеров ип
+                if reqst == res[1]:
+                    to_log('IP: ' + reqst + ' payout ' + str(res[2]))
+            elif typo == 2 and res[0] == 2:             # для юр лиц
+                if reqst[0] == res[1]:
+                    to_log('OOO: ' + reqst[0] + ' payout ' + str(res[2]))
+            elif 9 > typo > 3 and res[0] == 1:          # Берем физиков но не sql
+                if reqst[0] == res[1] and reqst[1] == res[2] and reqst[2] == res[3] and reqst[3] == res[4]:
+                    to_log('FIZ: ' + " ".join(map(str, reqst[:3])) + ' payout ' + str(res[5]))
+            elif typo == 9 and res[0] == 1:             # Берем только sql записи \ ищем среди физиков
+                if reqst[0] == res[1] and reqst[1] == res[2] and reqst[2] == res[3] and reqst[3] == res[4]:
+                    add = [reqst[4], reqst[5], reqst[6], reqst[7], reqst[8], '', '', res[5]]
+                    to_log('SQL: ' + "; ".join(map(str, add)))
+                    ff.append(add)
+                    counter += 1
+    to_log('Results SQL format: ' + str(counter))
+    return ff
+
+
 # Посчитать сумму штрафа из task['result'] JSON
 def violation_calc(sub_task):
     calc = 'Error'
@@ -327,27 +386,12 @@ def violation_calc(sub_task):
     return str(calc).replace('.', ',')
 
 
-# Подготавливаем массив для выгрузки в xlsx
-def xlsx_arr(request_array, result_array):
-    ff = []
-    for reqst in request_array:
-        if len(reqst) == 9:  # Берем только sql записи
-            for res in result_array:
-                if res[0] == 1:  # Берем только физиков
-                    if reqst[0] == res[1] and reqst[1] == res[2] and reqst[2] == res[3] and reqst[3] == res[4]:
-                        add = [reqst[4], reqst[5], reqst[6], reqst[7], reqst[8], '', '', res[5]]
-                        ff.append(add)
-    return ff
-
-
-
-
 ''' GO GO '''
 # Проверка путей - like __init__
 chk_paths()
 
 # Получаем массив бандитов из БД - если не указанна дата, то за сегодня
-req_arr = sql_req(znak='eq')
+req_arr = sql_req_home('25.05.2019', znak='eq')
 
 
 ''' 
@@ -358,7 +402,7 @@ req_arr = sql_req(znak='eq')
     для Юр.Лиц: ARRAY = [["OOO Качан", "Ул. Кочерышка"],["OOO Выходи", "Ул. Выходная"]]
     для Физ:    ARRAY = [['СААПАПЕВ', 'ДЕНИС', 'АНДРЕЕВИЧ', '12.02.1994'],["АГИ", "РОМАН", "АШЕВИЧ", "11.02.1994"]]
 '''
-''' DEBUG ''''''
+''' DEBUG '''
 req_arr.append(("", "", "", ""))    # For ERROR TEST
 # For double test
 req_arr.append(("АГЕВ", "РОМН", "АНЕЕВИЧ", "22.02.2004", "xxx", "194", "194", "194", "194", "194", "1994", "14", "14"))
@@ -370,16 +414,16 @@ req_arr.append("65094/16/77024-ИП")
 req_arr.append("1425628/16/77043-ИП")
 req_arr.append("65094/16/77024-ИП")
 req_arr.append("65094/16/77024-ИП")
-'''''' DEBUG END '''
+''' DEBUG END '''
 
 # Удаляем дубли запроса
 req = chk_req_arr(req_arr)
 # Из списка на проверку получаем task_uuid
 task_id = get_uuid(req)
 # Ждем пока TASK_UUID обработаются на сайте ФССП
-if get_finish(task_id):
+if get_uuid_finish(task_id):
     # Получаем результат (тип, параметры, сумма штрафов)
-    res_arr = get_result(task_id)
+    res_arr = get_uuid_result(task_id)
     # Подготовливаем массив для выгрузки в файлик
     xlsx = xlsx_arr(req_arr, res_arr)
     # Создаем файл из подготовленного массива

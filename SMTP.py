@@ -1,59 +1,13 @@
-'''
-
-
-import csv, smtplib, ssl
-
-message = """Subject: Your grade
-
-Hi {name}, your grade is {grade}"""
-from_address = "my@gmail.com"
-password = input("Type your password and press enter: ")
-
-context = ssl.create_default_context()
-with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
-    server.login(from_address, password)
-    with open("contacts_file.csv") as file:
-        reader = csv.reader(file)
-        next(reader)  # Skip header row
-        for name, email, grade in reader:
-            server.sendmail(
-                from_address,
-                email,
-                message.format(name=name,grade=grade),
-            )
-
-
-
-
-
-import csv
-
-with open("C:\tmp\mail.txt") as file:
-    reader = csv.reader(file)
-    next(reader)  # Skip header row
-    for email, name, lastname in reader:
-        print(f"Sending email to {name}")
-        server.sendmail(
-                from_address,
-                email,
-                message.format(name=name,lastname=lastname),
-            )
-
-
-For example, "hi {name}, you {result} your assignment".format(name="John", result="passed") will give you "hi John, you passed your assignment".
-https://docs.python.org/3/library/email.examples.html#email-examples
-'''
-
-
 import smtplib
 # Import the email modules we'll need
+import ssl
 from email.message import EmailMessage
 
 import csv
 
-#HOST = "mail.it2g.ru"
+#HOST = "mail.it2g.ru"  # OMG HOST
 SMTP = 'eps-relay01.mos.ru'
-PORT = 25
+PORT = 25       # 587 for gmail\mail.ru
 USER = 'APKUMS'
 PASSWD = 'J5?8T@y?'
 
@@ -122,27 +76,60 @@ with smtplib.SMTP(HOST) as s:
     s.send_message(msg)
     s.quit()
 '''
-with smtplib.SMTP(SMTP, PORT) as s:
-    s.set_debuglevel(1)
-    s.send_message(msg, FROM, TO)
-    '''
-    with open(r"C:\tmp\mail.txt") as file:
-        reader = csv.reader(file)
-        next(reader)  # Skip header row
-        for email, name, lastname in reader:
-            print(f"Sending email to {name}")
-            msg = EmailMessage()
-            msg.set_content(TEXT)
 
-            msg.add_alternative(HTML, subtype='html')
+#context = ssl.create_default_context()
+#context = ssl.SSLContext()
+#context.verify_mode = ssl.CERT_NONE     # CERT_NONE, CERT_OPTIONAL, CERT_REQUIRED
+#context.check_hostname = True
 
-            msg['Subject'] = SUBJECT
-            msg['From'] = FROM
-            msg['To'] = email
+try:
+    server = smtplib.SMTP(SMTP, PORT)
+    server.set_debuglevel(1)
+    print('1')
+    server.connect(SMTP, PORT)
+    print('2')
+    context = ssl.SSLContext()
+    server.starttls(keyfile=None, certfile=None, context=context)
+    print('3')
+    server.ehlo()
+#    server.send('AUTH NTLM LOGIN\r\n')
+#    server.ehlo()
+#    server.send('QVBLVU1T\r\n')
+#    server.send('SjU/OFRAeT8=')
+    server.login(user, password)
+#    server.has_extn('NTLM')
+    print('4')
+#    server.sendmail(fromaddr, toaddr, msg)
+    server.send_message(msg, from_addr=fromaddr, to_addrs=toaddr, mail_options=(), rcpt_options=('NOTIFY=SUCCESS,DELAY,FAILURE'))
+    print('5')
+#    server.quit()
+except Exception as e:
+    print(e)
+
+''' SMTP END '''
+
 '''
+SEND IT2G
 
+import smtplib
+from email.message import EmailMessage
+
+# Create a text/plain message
+msg = EmailMessage()
+msg.set_content("МЫ СЛЕДИМ ЗА ТОБОЙ")
+
+msg['Subject'] = "Будь осторожен"
+msg['From'] = "bazhanovav@it2g.ru" # Any address
+msg['To'] = "bazhanovav@it2g.ru"   # Any address
+
+# Send the message via our SMTP server.
+with smtplib.SMTP("mail.it2g.ru") as s:
+    s.send_message(msg)
     s.quit()
+
 '''
 with smtplib.SMTP_SSL(HOST, port, context=context) as server:
     server.login(FROM, password)
+'''
+
 '''
