@@ -10,8 +10,10 @@ new_param = 'new param'
 # PROGRAM CONFIG4
 PAUSE = 15                  # Интервал в секундах между запросами (в случае если task не выполнена)
 PARSE_FILE = False          # Будет ли парсится файл? (FILENAME)
+SAVE_RESULT = True          # Сохранять результат в файл
 TAB_SEPARATOR = False       # Разделитель в файле c результатами (знак табуляции или ; [copy from notepad or xlsx])
 RES_FILE_RENEW = True       # Обновлять файл с результатами или дописывать в конец файла
+RES_FILE_HEAD = ['Время', 'Адрес', 'Участок', 'Реестр', 'Контрольная сумма', 'Комментарий', 'Задержан', 'Сумма штрафов']
 # PATH CONFIG
 DIR = 'C:\\tmp\\'           # Основная папка
 RES_FILENAME = 'fssp.csv'   # Куда будут сохрянаться результаты
@@ -45,34 +47,53 @@ RESULT_URL = 'result'       # GET на получение результата
 # FUNCTIONS
 # Проверка всех путей like __init__ ; сделать через try - вдруг прав нет
 def chk_paths():
+    global SAVE_RESULT, LOG_TO_FILE
     print('Checking folders structure...')
+
     if not os.path.isdir(DIR):  # Проверка основной папки
         print("Creating main folder", DIR)
         os.makedirs(DIR)
     else:
         print('Main folder', DIR, 'exist - OK')
-    if not os.path.isfile(DIR + RES_FILENAME) or RES_FILE_RENEW:
-        print("Creating result file", DIR + RES_FILENAME)
-        with open(DIR + RES_FILENAME, "w") as filo:     # Переделать в TRY
-            topline = ['Время', 'Адрес', 'участок', 'Реестр', 'Контрольная сумма',
-                       'комментарий', 'задержан', 'сумма штрафов']
+    if SAVE_RESULT and (not os.path.isfile(DIR + RES_FILENAME) or RES_FILE_RENEW):
+        try:
+            filo = open(DIR + RES_FILENAME, "w")
             sep = "\t" if TAB_SEPARATOR else ";"
-            filo.write(sep.join(topline) + '\n')
+            filo.write(sep.join(RES_FILE_HEAD) + '\n')
             filo.close()
+            print("Creating result file", DIR + RES_FILENAME)
+        except IOError as err:
+            print('Error open file:', DIR + RES_FILENAME, 'Err:', err)
+            print('Set SAVE_RESULT = False')
+            SAVE_RESULT = False
     else:
         print("Result file", DIR + RES_FILENAME, 'exist - OK')
-    if LOG_TO_FILE:  # Если логирование включено
-        if not os.path.isdir(DIR + LOG_DIR):
-            print("Creating log folder", DIR + LOG_DIR)
+
+    if LOG_TO_FILE and not os.path.isdir(DIR + LOG_DIR):  # Если логирование включено
+        try:
             os.makedirs(DIR + LOG_DIR)
+        except:
+            print('Error creating folder', DIR + LOG_DIR)
+            print('Set LOG_TO_FILE = False')
+            LOG_TO_FILE = False
         else:
-            print('Log folder', DIR + LOG_DIR, 'exist - OK')
-        if not os.path.isfile(LOG_FILE_NAME):
-            with open(LOG_FILE_NAME, "w") as filo:
-                filo.write(time.strftime("%d.%m.%y %H:%M:%S", time.localtime())+': Created file log '+LOG_FILE_NAME+'\n')
-                print('Creating log file', LOG_FILE_NAME)
-        else:
-            print('Log file', LOG_FILE_NAME, 'exist - OK')
+            print("Creating log folder", DIR + LOG_DIR)
+    else:
+        print('Log folder', DIR + LOG_DIR, 'exist - OK')
+
+    if LOG_TO_FILE and not os.path.isfile(LOG_FILE_NAME):
+        try:
+            filo = open(LOG_FILE_NAME, "w")
+            filo.write(time.strftime("%d.%m.%y %H:%M:%S", time.localtime())+': Created file log '+LOG_FILE_NAME+'\n')
+            print('Creating log file', LOG_FILE_NAME)
+        except:
+            print('Error creating folder', DIR + LOG_DIR)
+            print('Set LOG_TO_FILE = False')
+            LOG_TO_FILE = False
+
+    else:
+        print('Log file', LOG_FILE_NAME, 'exist - OK')
+
     if PARSE_FILE:  # Если берем данные из файла
         if not os.path.isfile(DIR + REQ_FILENAME):
             print('ERROR: No file to parse', DIR + REQ_FILENAME)
