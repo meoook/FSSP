@@ -42,20 +42,47 @@ IP_URL = 'search/ip'        # GET поиск по Номеру ИП (не исп
 GROUP_URL = 'search/group'  # POST мультипоиск ФИЗ\ЮР\ИП
 STATUS_URL = 'status'       # GET на получение статуса
 RESULT_URL = 'result'       # GET на получение результата
+# COLOR ERRORS
 
 
-# FUNCTIONS
+# Проверка на read\write file
+def chk_cr(path: str, file: bool = True, msg: str = False):
+
+    if file:
+        if os.path.isfile(path):    # Проверка файла
+            try:
+                filo = open(path, "w")
+                if msg:
+                    filo.write(msg)
+            except IOError:
+                print('Error open file:', path)
+            else:
+                print('Write file OK:', path)
+    elif os.path.isdir(DIR):        # Проверка папки
+
+
+        try:
+            filo = open(DIR + RES_FILENAME, "w")
+            sep = "\t" if TAB_SEPARATOR else ";"
+            filo.write(sep.join(RES_FILE_HEAD) + '\n')
+            filo.close()
+            print("Creating result file", DIR + RES_FILENAME)
+        except IOError as err:
+            print('Error open file:', DIR + RES_FILENAME, 'Err:', err)
+            print('Set SAVE_RESULT = False')
+            SAVE_RESULT = False
+
+
 # Проверка всех путей like __init__ ; сделать через try - вдруг прав нет
 def chk_paths():
-    global SAVE_RESULT, LOG_TO_FILE
+    global SAVE_RESULT
     print('Checking folders structure...')
-
     if not os.path.isdir(DIR):  # Проверка основной папки
         print("Creating main folder", DIR)
         os.makedirs(DIR)
     else:
         print('Main folder', DIR, 'exist - OK')
-    if SAVE_RESULT and (not os.path.isfile(DIR + RES_FILENAME) or RES_FILE_RENEW):
+    if not os.path.isfile(DIR + RES_FILENAME) or RES_FILE_RENEW:
         try:
             filo = open(DIR + RES_FILENAME, "w")
             sep = "\t" if TAB_SEPARATOR else ";"
@@ -68,38 +95,71 @@ def chk_paths():
             SAVE_RESULT = False
     else:
         print("Result file", DIR + RES_FILENAME, 'exist - OK')
-
-    if LOG_TO_FILE and not os.path.isdir(DIR + LOG_DIR):  # Если логирование включено
-        try:
-            os.makedirs(DIR + LOG_DIR)
-        except:
-            print('Error creating folder', DIR + LOG_DIR)
-            print('Set LOG_TO_FILE = False')
-            LOG_TO_FILE = False
-        else:
+    if LOG_TO_FILE:  # Если логирование включено
+        if not os.path.isdir(DIR + LOG_DIR):
             print("Creating log folder", DIR + LOG_DIR)
-    else:
-        print('Log folder', DIR + LOG_DIR, 'exist - OK')
-
-    if LOG_TO_FILE and not os.path.isfile(LOG_FILE_NAME):
-        try:
-            filo = open(LOG_FILE_NAME, "w")
-            filo.write(time.strftime("%d.%m.%y %H:%M:%S", time.localtime())+': Created file log '+LOG_FILE_NAME+'\n')
-            print('Creating log file', LOG_FILE_NAME)
-        except:
-            print('Error creating folder', DIR + LOG_DIR)
-            print('Set LOG_TO_FILE = False')
-            LOG_TO_FILE = False
-
-    else:
-        print('Log file', LOG_FILE_NAME, 'exist - OK')
-
+            os.makedirs(DIR + LOG_DIR)
+        else:
+            print('Log folder', DIR + LOG_DIR, 'exist - OK')
+        if not os.path.isfile(LOG_FILE_NAME):
+            with open(LOG_FILE_NAME, "w") as filo:
+                filo.write(time.strftime("%d.%m.%y %H:%M:%S",
+                                         time.localtime()) + ': Created file log ' + LOG_FILE_NAME + '\n')
+                print('Creating log file', LOG_FILE_NAME)
+        else:
+            print('Log file', LOG_FILE_NAME, 'exist - OK')
     if PARSE_FILE:  # Если берем данные из файла
         if not os.path.isfile(DIR + REQ_FILENAME):
             print('ERROR: No file to parse', DIR + REQ_FILENAME)
             return False
         else:
             print('File to parse', DIR + REQ_FILENAME, 'exist - OK')
+
+
+# Проверка на статус ответа запроса
+def chk_resp(response):
+    if response.status_code != 200:  # Если ответ - ошибка
+        to_log("Request error, CODE: " + str(response.status_code) + ' Exception: ' + response.json()["exception"], 1)
+        return False
+    js_resp = response.json()
+    if js_resp['status'] != 'success':  # Если статус запроса - ошибка
+        to_log("Request error, Status: " + js_resp['status'], 1)
+        return False
+    return True
+
+
+# Убираем дубли из массива
+def chk_req_arr(ar):
+    to_del = []
+    n = len(ar)
+    for x in range(n):
+        if x in to_del:
+            continue
+        for y in range(n):
+            if x == y:
+                continue
+            elif y in to_del:
+                continue
+            else:
+                if isinstance(ar[y], str):
+                    if ar[x] == ar[y]:
+                        to_del.append(y)
+                else:
+                    typo = len(ar[y])
+                    if typo == 2 and ar[x][0] == ar[y][0] and ar[x][1] == ar[y][1]:
+                        to_del.append(y)
+                    elif 3 < typo < 10:
+                        if ar[x][0] == ar[y][0] and ar[x][1] == ar[y][1] and ar[y][2] == ar[x][2] and ar[x][3] == ar[y][3]:
+                            to_del.append(y)
+                    else:
+                        to_log('Row request type error. Count of elements: ' + str(typo), 2)  # TO LOG
+                        to_del.append(y)
+    to_del.sort(reverse=True)
+    arc = ar[:]  # А то удаляется из глобального входящего массива
+    to_log('Deleted doubles and errors from request. Count: ' + str(len(to_del)))
+    for xxx in to_del:
+        del arc[xxx]
+    return arc
 
 
 # Записать сообщение в лог файл
@@ -124,6 +184,9 @@ def to_log(msg: str, deep_lvl: int = 3):
 
 # Записываем результат в файл
 def write_csv(xlsx_array):
+    if SAVE_RESULT is False:
+        to_log('Save to file: OFF. Results not saved.')
+        return False
     try:
         filo = open(DIR + RES_FILENAME, "a")
         for row in xlsx_array:
@@ -190,13 +253,13 @@ def sql_req(date='xx', znak='eq'):
                  "WHERE v.court_object_id not IN (173, 174) " \
                  "AND (mia_check_result = 1 OR fssp_check_result = 1) " \
                  "AND v.creation_date::date "
-        select += "=" if znak == 'eq' else ">="
+        select += "= " if znak == 'eq' else ">= "
         select += "CURRENT_DATE " if date == 'xx' else "'" + date + "' "
         select += "ORDER BY v.creation_date desc"
-        to_log('SQL Select to DB: ' + PG_DB_NAME + ' Req: ' + select[:95] + '...')
+        to_log('SQL request conditions: ' + select[532:-29])
         cur.execute(select)
         rows = cur.fetchall()  # Return
-        # TO LOG?: cur.rowcount
+        to_log('SQL request return ' + str(cur.rowcount) + ' rows')
         cur.close()
     except psycopg2.Error as error:
         to_log('SQL ERROR: ' + str(error), 1)  # SQL ERROR select
@@ -226,7 +289,7 @@ def get_uuid_req(task_uuid, status='result'):
 # Получаем task_uuid из списка бандитов
 def get_uuid(req_array):
     if len(req_array) == 0:
-        to_log('Error while getting Task_UUID. Request array error', 2)
+        to_log('Error while getting Task_UUID. Request array empty.', 2)
         return False  # TO LOG
     reqst = {"token": TOKEN, "request": []}
 
@@ -255,7 +318,7 @@ def get_uuid(req_array):
         to_log('Get task for ' + str(len(req_array)) + ' requests. Task_UUID: ' + response.json()['response']['task'])
         return response.json()['response']['task']
     else:
-        to_log('Error while getting Task_UUID', 1)
+        to_log('Error while getting Task_UUID. ', 1)
         return False
 
 
@@ -304,52 +367,6 @@ def get_uuid_result(task_uuid):
         elif sub_task['query']['type'] == 3:
             result.append([sub_task['query']['type'], sub_task['query']['params']['number'], calc])
     return result
-
-
-# Проверка на статус ответа запроса
-def chk_resp(response):
-    if response.status_code != 200:  # Если ответ - ошибка
-        to_log("Request error, CODE: " + str(response.status_code) + ' Exception: ' + response.json()["exception"], 1)
-        return False
-    js_resp = response.json()
-    if js_resp['status'] != 'success':  # Если статус запроса - ошибка
-        to_log("Request error, Status: " + js_resp['status'], 1)
-        return False
-    return True
-
-
-# Убираем дубли из массива
-def chk_req_arr(ar):
-    to_del = []
-    n = len(ar)
-    for x in range(n):
-        if x in to_del:
-            continue
-        for y in range(n):
-            if x == y:
-                continue
-            elif y in to_del:
-                continue
-            else:
-                if isinstance(ar[y], str):
-                    if ar[x] == ar[y]:
-                        to_del.append(y)
-                else:
-                    typo = len(ar[y])
-                    if typo == 2 and ar[x][0] == ar[y][0] and ar[x][1] == ar[y][1]:
-                        to_del.append(y)
-                    elif 3 < typo < 10:
-                        if ar[x][0] == ar[y][0] and ar[x][1] == ar[y][1] and ar[y][2] == ar[x][2] and ar[x][3] == ar[y][3]:
-                            to_del.append(y)
-                    else:
-                        to_log('Row request type error. Count of elements: ' + str(typo), 2)  # TO LOG
-                        to_del.append(y)
-    to_del.sort(reverse=True)
-    arc = ar[:]  # А то удаляется из глобального входящего массива
-    to_log('Deleted doubles and errors from request. Count: ' + str(len(to_del)))
-    for xxx in to_del:
-        del arc[xxx]
-    return arc
 
 
 # Подготавливаем массив для выгрузки в xlsx
@@ -405,6 +422,7 @@ chk_paths()
 
 # Получаем массив бандитов из БД - если не указанна дата, то за сегодня
 #req_arr = sql_req_home('25.05.2019', znak='eq')
+#req_arr = sql_req('07.06.2019', znak='eq')
 req_arr = sql_req(znak='eq')
 
 
