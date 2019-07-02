@@ -3,13 +3,27 @@ import time
 import re
 import psycopg2
 import os
+'''
+COLOR MESSAGE
+COMMON  93
+INFO    94
+ERROR   33
+CRIT    31
+OK      32
+FAIL    91
+'''
+print('\x1b[93;107m===== FSSP Checker =====\x1b[0m')
+print('\x1b[93;107m' + ' Version: 0.7'.ljust(24) + '\x1b[0m')
+print('\x1b[93;107m' + ' Author:  meok'.ljust(24) + '\x1b[0m')
+print('\x1b[93;107m' + ' Company: it2g.ru'.ljust(24) + '\x1b[0m')
+print('\x1b[93;107m========================\x1b[0m')
 
 
 ''' CONFIG '''
 new_param = 'new param'
 # PROGRAM CONFIG4
 PAUSE = 15                  # Интервал в секундах между запросами (в случае если task не выполнена)
-PARSE_FILE = False          # Будет ли парсится файл? (REQ_FILENAME)
+PARSE_FILE = True           # Будет ли парсится файл? (REQ_FILENAME)
 SAVE_RESULT = True          # Сохранять результат в файл
 TAB_SEPARATOR = False       # Разделитель в файле c результатами (знак табуляции или ; [copy from notepad or xlsx])
 RES_FILE_RENEW = True       # Обновлять файл с результатами или дописывать в конец файла
@@ -17,9 +31,9 @@ RES_FILE_HEAD = ['Время', 'Адрес', 'Участок', 'Реестр', '
 # PATH CONFIG
 DIR = 'C:\\tmp\\'           # Основная папка
 RES_FILENAME = 'fssp.csv'   # Куда будут сохрянаться результаты
-REQ_FILENAME = 'fssp.txt'   # Файл который будет парситься для запроса (не используется)
+REQ_FILENAME = 'fsssp.txt'  # Файл который будет парситься для запроса (не используется)
 # LOG CONFIG
-LOG_DIR = 'Logs'            # Папка для логов
+LOG_DIR = 'logs'            # Папка для логов
 LOG_ECHO = True             # Вывод логов на экран
 LOG_TO_FILE = True          # Сохранять в файл
 LOG_LVL = 3                 # 1 - Critical, 2 - data err, 3 - info(all))
@@ -42,62 +56,63 @@ IP_URL = 'search/ip'        # GET поиск по Номеру ИП (не исп
 GROUP_URL = 'search/group'  # POST мультипоиск ФИЗ\ЮР\ИП
 STATUS_URL = 'status'       # GET на получение статуса
 RESULT_URL = 'result'       # GET на получение результата
-'''
-COLOR MESSAGE
-COMMON  93
-INFO    94
-ERROR   33
-CRIT    31
-OK      32
-FAIL    91
-'''
-print('=========== COLOR TEST ===========')
-print('\x1b[1;97;40m' + '1;97;40 1=BOLD, 97=Black, 40=White' + '\x1b[0m')
-print('\33[31m' + 'RED' + '\33[0m')
-print('==================================')
 
 
 # Проверка всех путей like __init__ ; сделать через try - вдруг прав нет
 def chk_paths():
-    global SAVE_RESULT, LOG_TO_FILE, PARSE_FILE
-
-    # Нужно ли проверять структуру файлов\папок
+    global SAVE_RESULT, LOG_TO_FILE, PARSE_FILE, LOG_ECHO
+    # Проверием структуру файлов\папок
     if PARSE_FILE or SAVE_RESULT or LOG_TO_FILE:
         print('Checking folders structure...')
-        if not os.path.isdir(DIR):  # Проверка основной папки
+        if os.path.isdir(DIR):  # Проверка основной папки
+            print('Main folder\33[93m', DIR, '\33[0mexist - \33[32mOK\33[0m')
+        else:
             try:
                 os.makedirs(DIR)
                 print('Main folder\33[93m', DIR, '\33[0m created - \33[32mOK\33[0m')
             except Exception as e:
-                print('Main folder\33[93m', DIR, '\33[0m creating fail. Error:\33[91m', e)
-                print('\33[93mSet SAVE_RESULT = False\33[0m')
-                print('\33[93mSet LOG_TO_FILE = False\33[0m')
-                print('\33[93mSet PARSE_FILE = False\33[0m')
+                print('Main folder\33[93m', DIR, '\33[0m creating - \33[91mfail.', e, '\33[0m')
+                print('\33[91mSet SAVE_RESULT = False\33[0m')
+                print('\33[91mSet LOG_TO_FILE = False\33[0m')
+                print('\33[91mSet PARSE_FILE = False\33[0m')
                 SAVE_RESULT = False
                 LOG_TO_FILE = False
                 PARSE_FILE = False
+                print('No files will be used.\33[93m Echo mode.\33[0m')
+                LOG_ECHO = True
                 return False
-        else:
-            print('Main folder\33[93m', DIR, '\33[0mexist - \33[32mOK\33[0m')
     else:
         print('No files will be used.\33[93m Echo mode.\33[0m')
+        LOG_ECHO = True
         return False
-
-    if LOG_TO_FILE:  # Если логирование включено
-        if not os.path.isdir(DIR + LOG_DIR):
-            print("Log folder", DIR + LOG_DIR)
-            os.makedirs(DIR + LOG_DIR)
-        else:
+    # Если логирование включено
+    if LOG_TO_FILE:
+        if os.path.isdir(DIR + LOG_DIR):    # Проверка папки с логами
             print('Log folder\33[93m', DIR + LOG_DIR, '\33[0mexist - \33[32mOK\33[0m')
-        if not os.path.isfile(LOG_FILE_NAME):
-            with open(LOG_FILE_NAME, "w") as filo:
-                filo.write(time.strftime("%d.%m.%y %H:%M:%S",
-                                         time.localtime()) + ': Created file log ' + LOG_FILE_NAME + '\n')
-                print('Creating log file', LOG_FILE_NAME)
         else:
+            try:
+                os.makedirs(DIR + LOG_DIR)
+                print('Log folder\33[93m', DIR + LOG_DIR, '\33[0mcreated - \33[32mOK\33[0m')
+            except Exception as e:
+                print('Log folder\33[93m', DIR + LOG_DIR, '\33[0mcreating - \33[91mfail.', e, '\33[0m')
+                print('\33[91mSet LOG_TO_FILE = False\33[0m')
+                LOG_TO_FILE = False
+                LOG_ECHO = True
+    if LOG_TO_FILE:
+        if os.path.isfile(LOG_FILE_NAME):   # Проверка файла логов
             print('Log file\33[93m', LOG_FILE_NAME, '\33[0mexist - \33[32mOK\33[0m')
-
-    # Сохраняем ли файл с результатами
+        else:
+            try:
+                filo = open(LOG_FILE_NAME, "w")
+                filo.write(time.strftime("%d.%m.%y %H:%M:%S",
+                                         time.localtime()) + ' [INFO] Created file log ' + LOG_FILE_NAME + '\n')
+                print('Log file\33[93m', LOG_FILE_NAME, '\33[0mcreated - \33[32mOK\33[0m')
+            except Exception as e:
+                print('Log file\33[93m', LOG_FILE_NAME, '\33[0mcreating - \33[91mfail.', e, '\33[0m')
+                print('\33[91mSet LOG_TO_FILE = False\33[0m')
+                LOG_TO_FILE = False
+                LOG_ECHO = True
+    # Создаем файл с результатами
     if SAVE_RESULT:
         if not os.path.isfile(DIR + RES_FILENAME) or RES_FILE_RENEW:
             try:
@@ -106,21 +121,25 @@ def chk_paths():
                 filo.write(sep.join(RES_FILE_HEAD) + '\n')
                 filo.close()
                 print("Result file\33[93m", DIR + RES_FILENAME, '\33[0mcreated - \33[32mOK\33[0m')
-            except IOError as err:
-                print('Error open file:\33[93m', DIR + RES_FILENAME, '\33[0mError critical:\33[31m', err, '\33[0m')
+            except IOError as e:
+                print('Result file:\33[93m', DIR + RES_FILENAME, '\33[0mcreating - \33[91mfail.', e, '\33[0m')
                 print('\33[93mSet SAVE_RESULT = False\33[0m')
                 SAVE_RESULT = False
-    else:
-        print("Result file", DIR + RES_FILENAME, 'exist - OK')
-
-
-
-    if PARSE_FILE:  # Если берем данные из файла
-        if not os.path.isfile(DIR + REQ_FILENAME):
-            print('ERROR: No file to parse', DIR + REQ_FILENAME)
-            return False
+                LOG_ECHO = True
         else:
-            print('File to parse', DIR + REQ_FILENAME, 'exist - OK')
+            print('Result file\33[93m', DIR + RES_FILENAME, '\33[0mexist - \33[32mOK\33[0m')
+    # Берем данные из файла
+    if PARSE_FILE:
+        if os.path.isfile(DIR + REQ_FILENAME):
+            print('File to parse\33[93m', DIR + REQ_FILENAME, '\33[0mexist - \33[32mOK\33[0m')
+        else:
+            print('File to parse\33[93m', DIR + REQ_FILENAME, '\33[0mopen - \33[91mfail\33[0m.')
+            print('\33[91mSet PARSE_FILE = False\33[0m')
+            PARSE_FILE = False
+    # Режим вывода на экран
+    if LOG_ECHO:
+        print('\33[93mECHO MODE:\33[0m All errors and info will be shown on screen.')
+    return True
 
 
 # Проверка на статус ответа запроса
@@ -172,7 +191,7 @@ def chk_req_arr(ar):
 # Записать сообщение в лог файл
 def to_log(msg: str, deep_lvl: int = 3):
     if msg is False:
-        msg = echo = 'Try to put empty message in log'
+        msg = 'Try to put empty message in log'
         deep_lvl = 1
     if deep_lvl == 1:
         echo = '\x1b[31m[CRIT]\x1b[0m ' + msg
@@ -272,7 +291,7 @@ def sql_req(date='xx', znak='eq'):
         to_log('SQL request return ' + str(cur.rowcount) + ' rows')
         cur.close()
     except psycopg2.Error as error:
-        to_log('SQL ERROR: ' + str(error), 1)  # SQL ERROR select
+        to_log('SQL ERROR: ' + str(error), 1)  # SQL ERROR
     finally:
         if conn is not None:
             conn.close()

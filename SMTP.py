@@ -1,3 +1,4 @@
+'''
 import smtplib
 # Import the email modules we'll need
 import ssl
@@ -70,13 +71,13 @@ msg['Subject'] = SUBJECT
 msg['From'] = FROM
 msg['To'] = TO
 
-'''
+
 # Send the message via our own SMTP server.
 with smtplib.SMTP(HOST) as s:
     s.send_message(msg)
     s.quit()
 '''
-
+'''
 #context = ssl.create_default_context()
 #context = ssl.SSLContext()
 #context.verify_mode = ssl.CERT_NONE     # CERT_NONE, CERT_OPTIONAL, CERT_REQUIRED
@@ -106,11 +107,10 @@ try:
 except Exception as e:
     print(e)
 
-''' SMTP END '''
 
-'''
+
 SEND IT2G
-
+'''
 import smtplib
 from email.message import EmailMessage
 
@@ -119,17 +119,14 @@ msg = EmailMessage()
 msg.set_content("МЫ СЛЕДИМ ЗА ТОБОЙ")
 
 msg['Subject'] = "Будь осторожен"
-msg['From'] = "bazhanovav@it2g.ru" # Any address
-msg['To'] = "bazhanovav@it2g.ru"   # Any address
+msg['From'] = "bazhanovav@it2g.ru"  # Any address
+msg['To'] = "mmurz@mail.ru"   # Any address
 
 # Send the message via our SMTP server.
 with smtplib.SMTP("mail.it2g.ru") as s:
+    s.starttls()
+    s.login("bazhanovav@it2g.ru", "j3262newW")
     s.send_message(msg)
     s.quit()
 
-'''
-with smtplib.SMTP_SSL(HOST, port, context=context) as server:
-    server.login(FROM, password)
-'''
 
-'''
