@@ -11,7 +11,8 @@ for i in range(5):
 
 
 
-class bcolors:
+
+class frmt:
     C_A = '\33[95m'
     C_BLUE = '\33[94m'
     C_RED = '\33[103m'
@@ -22,37 +23,44 @@ class bcolors:
     C_UNDERLINE = '\33[4m'
 
 
-print(bcolors.C_A + 'PINK'
-      + bcolors.C_BLUE + 'BLUE'
-      + bcolors.C_RED + 'YELLOW'
-      + bcolors.C_GREEN + 'DGREEN'
-      + bcolors.C_FAIL + 'RED'
-      + bcolors.C_UNDERLINE + 'Underline'
-      + bcolors.C_END + 'END'
-      )
-
-
+print('----- MAIN COLOR -----')
 print('\x1b[30m' + '30 white' + '\x1b[0m')
-print('\x1b[31m' + '31 red' + '\x1b[0m')
-print('\x1b[91m' + '91 red' + '\x1b[0m')
-print('\x1b[32m' + '32 green' + '\x1b[0m')
-print('\x1b[93m' + '93' + '\x1b[0m')
-print('\x1b[33m' + '33 orange' + '\x1b[0m')
-print('\x1b[34m' + '34 blue' + '\x1b[0m')
-print('\x1b[35m' + '35 pink' + '\x1b[0m')
-print('\x1b[36m' + '36 water' + '\x1b[0m')
-print('\x1b[37m' + '37 d_gray' + '\x1b[0m')
 print('\x1b[38m' + '38 l_gray' + '\x1b[0m')
-print('\x1b[39m' + '39stsdasdasd!' + '\x1b[0m')
-print('\x1b[39;41m' + '40stsdasdasd!' + '\x1b[0m')
-print('\x1b[30;41m' + '41stsdasdasd!' + '\x1b[0m')
-print('\x1b[30;42m' + '42stsdasdasd!' + '\x1b[0m')
-print('\x1b[30;43m' + 'testsdasdasd!' + '\x1b[0m')
-print('\x1b[44m' + 'testsdasdasd!' + '\x1b[0m')
-print('\x1b[45m' + 'testsdasdasd!' + '\x1b[0m')
-print('\x1b[46m' + 'testsdasdasd!' + '\x1b[0m')
-print('\x1b[47m' + 'testsdasdasd!' + '\x1b[0m')
-print('\x1b[48m' + 'testsdasdasd!' + '\x1b[0m')
+print('\x1b[37m' + '37 gray' + '\x1b[0m')
+print('\x1b[90m' + '90 d_gray' + '\x1b[0m')
+print('\x1b[97m' + '97 black' + '\x1b[0m')
+print('\x1b[31m' + '31 d_red' + '\x1b[0m')
+print('\x1b[91m' + '91 l_red' + '\x1b[0m')
+print('\x1b[32m' + '32 green' + '\x1b[0m')
+print('\x1b[92m' + '92 green' + '\x1b[0m')
+print('\x1b[33m' + '33 orange' + '\x1b[0m')
+print('\x1b[93m' + '93 yellow' + '\x1b[0m')
+print('\x1b[34m' + '34 blue' + '\x1b[0m')
+print('\x1b[94m' + '94 l_blue' + '\x1b[0m')
+print('\x1b[35m' + '35 purple' + '\x1b[0m')
+print('\x1b[95m' + '95 pink' + '\x1b[0m')
+print('\x1b[36m' + '36 water' + '\x1b[0m')
+print('\x1b[96m' + '96 sky' + '\x1b[0m')
+print('----- BACKGROUND -----')
+print('\x1b[40m' + '40 white' + '\x1b[0m')
+print('\x1b[47m' + '47 l_gray' + '\x1b[0m')
+print('\x1b[100m' + '100 d_gray' + '\x1b[0m')
+print('\x1b[107m' + '107 black' + '\x1b[0m')
+print('\x1b[41m' + '41 d_red' + '\x1b[0m')
+print('\x1b[101m' + '101 l_red' + '\x1b[0m')
+print('\x1b[42m' + '42 green' + '\x1b[0m')
+print('\x1b[102m' + '102 green' + '\x1b[0m')
+print('\x1b[43m' + '43 orange' + '\x1b[0m')
+print('\x1b[103m' + '103 yellow' + '\x1b[0m')
+print('\x1b[44m' + '44 blue' + '\x1b[0m')
+print('\x1b[104m' + '104 l_blue' + '\x1b[0m')
+print('\x1b[45m' + '45 purple' + '\x1b[0m')
+print('\x1b[105m' + '105 pink' + '\x1b[0m')
+print('\x1b[46m' + '46 water' + '\x1b[0m')
+print('\x1b[106m' + '106 sky' + '\x1b[0m')
+print('----- EXAMPLE -----')
+print('\x1b[1;97;40m' + '1;97;40 1=BOLD' + '\x1b[0m')
+print('\x1b[97;47m' + '97;47' + '\x1b[0m')
+print('\x1b[4;32;100m' + '4;32;100 4=Underline' + '\x1b[0m')
+print('\x1b[30;107m' + '30;107' + '\x1b[0m')
 
-
-print('\x1b[90m' + '90 black' + '\x1b[0m')

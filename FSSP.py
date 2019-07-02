@@ -9,7 +9,7 @@ import os
 new_param = 'new param'
 # PROGRAM CONFIG4
 PAUSE = 15                  # Интервал в секундах между запросами (в случае если task не выполнена)
-PARSE_FILE = False          # Будет ли парсится файл? (FILENAME)
+PARSE_FILE = False          # Будет ли парсится файл? (REQ_FILENAME)
 SAVE_RESULT = True          # Сохранять результат в файл
 TAB_SEPARATOR = False       # Разделитель в файле c результатами (знак табуляции или ; [copy from notepad or xlsx])
 RES_FILE_RENEW = True       # Обновлять файл с результатами или дописывать в конец файла
@@ -22,7 +22,7 @@ REQ_FILENAME = 'fssp.txt'   # Файл который будет парсить�
 LOG_DIR = 'Logs'            # Папка для логов
 LOG_ECHO = True             # Вывод логов на экран
 LOG_TO_FILE = True          # Сохранять в файл
-LOG_LVL = 1                 # 1 - Critical, 2 - data err, 3 - info(all))
+LOG_LVL = 3                 # 1 - Critical, 2 - data err, 3 - info(all))
 LOG_FILE_NAME = DIR + LOG_DIR + '\\' + 'fssp_' + time.strftime("%d.%m.%y", time.localtime()) + '.log'
 # PG_SQL CONFIG
 PG_HOST = '172.17.75.4'
@@ -42,72 +42,79 @@ IP_URL = 'search/ip'        # GET поиск по Номеру ИП (не исп
 GROUP_URL = 'search/group'  # POST мультипоиск ФИЗ\ЮР\ИП
 STATUS_URL = 'status'       # GET на получение статуса
 RESULT_URL = 'result'       # GET на получение результата
-# COLOR ERRORS
-
-
-# Проверка на read\write file
-def chk_cr(path: str, file: bool = True, msg: str = False):
-
-    if file:
-        if os.path.isfile(path):    # Проверка файла
-            try:
-                filo = open(path, "w")
-                if msg:
-                    filo.write(msg)
-            except IOError:
-                print('Error open file:', path)
-            else:
-                print('Write file OK:', path)
-    elif os.path.isdir(DIR):        # Проверка папки
-
-
-        try:
-            filo = open(DIR + RES_FILENAME, "w")
-            sep = "\t" if TAB_SEPARATOR else ";"
-            filo.write(sep.join(RES_FILE_HEAD) + '\n')
-            filo.close()
-            print("Creating result file", DIR + RES_FILENAME)
-        except IOError as err:
-            print('Error open file:', DIR + RES_FILENAME, 'Err:', err)
-            print('Set SAVE_RESULT = False')
-            SAVE_RESULT = False
+'''
+COLOR MESSAGE
+COMMON  93
+INFO    94
+ERROR   33
+CRIT    31
+OK      32
+FAIL    91
+'''
+print('=========== COLOR TEST ===========')
+print('\x1b[1;97;40m' + '1;97;40 1=BOLD, 97=Black, 40=White' + '\x1b[0m')
+print('\33[31m' + 'RED' + '\33[0m')
+print('==================================')
 
 
 # Проверка всех путей like __init__ ; сделать через try - вдруг прав нет
 def chk_paths():
-    global SAVE_RESULT
-    print('Checking folders structure...')
-    if not os.path.isdir(DIR):  # Проверка основной папки
-        print("Creating main folder", DIR)
-        os.makedirs(DIR)
+    global SAVE_RESULT, LOG_TO_FILE, PARSE_FILE
+
+    # Нужно ли проверять структуру файлов\папок
+    if PARSE_FILE or SAVE_RESULT or LOG_TO_FILE:
+        print('Checking folders structure...')
+        if not os.path.isdir(DIR):  # Проверка основной папки
+            try:
+                os.makedirs(DIR)
+                print('Main folder\33[93m', DIR, '\33[0m created - \33[32mOK\33[0m')
+            except Exception as e:
+                print('Main folder\33[93m', DIR, '\33[0m creating fail. Error:\33[91m', e)
+                print('\33[93mSet SAVE_RESULT = False\33[0m')
+                print('\33[93mSet LOG_TO_FILE = False\33[0m')
+                print('\33[93mSet PARSE_FILE = False\33[0m')
+                SAVE_RESULT = False
+                LOG_TO_FILE = False
+                PARSE_FILE = False
+                return False
+        else:
+            print('Main folder\33[93m', DIR, '\33[0mexist - \33[32mOK\33[0m')
     else:
-        print('Main folder', DIR, 'exist - OK')
-    if not os.path.isfile(DIR + RES_FILENAME) or RES_FILE_RENEW:
-        try:
-            filo = open(DIR + RES_FILENAME, "w")
-            sep = "\t" if TAB_SEPARATOR else ";"
-            filo.write(sep.join(RES_FILE_HEAD) + '\n')
-            filo.close()
-            print("Creating result file", DIR + RES_FILENAME)
-        except IOError as err:
-            print('Error open file:', DIR + RES_FILENAME, 'Err:', err)
-            print('Set SAVE_RESULT = False')
-            SAVE_RESULT = False
-    else:
-        print("Result file", DIR + RES_FILENAME, 'exist - OK')
+        print('No files will be used.\33[93m Echo mode.\33[0m')
+        return False
+
     if LOG_TO_FILE:  # Если логирование включено
         if not os.path.isdir(DIR + LOG_DIR):
-            print("Creating log folder", DIR + LOG_DIR)
+            print("Log folder", DIR + LOG_DIR)
             os.makedirs(DIR + LOG_DIR)
         else:
-            print('Log folder', DIR + LOG_DIR, 'exist - OK')
+            print('Log folder\33[93m', DIR + LOG_DIR, '\33[0mexist - \33[32mOK\33[0m')
         if not os.path.isfile(LOG_FILE_NAME):
             with open(LOG_FILE_NAME, "w") as filo:
                 filo.write(time.strftime("%d.%m.%y %H:%M:%S",
                                          time.localtime()) + ': Created file log ' + LOG_FILE_NAME + '\n')
                 print('Creating log file', LOG_FILE_NAME)
         else:
-            print('Log file', LOG_FILE_NAME, 'exist - OK')
+            print('Log file\33[93m', LOG_FILE_NAME, '\33[0mexist - \33[32mOK\33[0m')
+
+    # Сохраняем ли файл с результатами
+    if SAVE_RESULT:
+        if not os.path.isfile(DIR + RES_FILENAME) or RES_FILE_RENEW:
+            try:
+                filo = open(DIR + RES_FILENAME, "w")
+                sep = "\t" if TAB_SEPARATOR else ";"
+                filo.write(sep.join(RES_FILE_HEAD) + '\n')
+                filo.close()
+                print("Result file\33[93m", DIR + RES_FILENAME, '\33[0mcreated - \33[32mOK\33[0m')
+            except IOError as err:
+                print('Error open file:\33[93m', DIR + RES_FILENAME, '\33[0mError critical:\33[31m', err, '\33[0m')
+                print('\33[93mSet SAVE_RESULT = False\33[0m')
+                SAVE_RESULT = False
+    else:
+        print("Result file", DIR + RES_FILENAME, 'exist - OK')
+
+
+
     if PARSE_FILE:  # Если берем данные из файла
         if not os.path.isfile(DIR + REQ_FILENAME):
             print('ERROR: No file to parse', DIR + REQ_FILENAME)
@@ -165,17 +172,20 @@ def chk_req_arr(ar):
 # Записать сообщение в лог файл
 def to_log(msg: str, deep_lvl: int = 3):
     if msg is False:
-        msg = 'Try to put empty message in log'
+        msg = echo = 'Try to put empty message in log'
         deep_lvl = 1
     if deep_lvl == 1:
+        echo = '\x1b[31m[CRIT]\x1b[0m ' + msg
         msg = '[CRIT] ' + msg
     elif deep_lvl == 2:
+        echo = '\x1b[33m[ERR]\x1b[0m ' + msg
         msg = '[ERR] ' + msg
     else:
+        echo = '\x1b[94m[INFO]\x1b[0m ' + msg
         msg = '[INFO] ' + msg
     msg = time.strftime("%d.%m.%y %H:%M:%S", time.localtime()) + ' ' + msg
     if LOG_ECHO:
-        print(msg)
+        print(echo)
     if LOG_TO_FILE:
         if LOG_LVL >= deep_lvl:
             with open(LOG_FILE_NAME, "a") as filo:
@@ -256,7 +266,7 @@ def sql_req(date='xx', znak='eq'):
         select += "= " if znak == 'eq' else ">= "
         select += "CURRENT_DATE " if date == 'xx' else "'" + date + "' "
         select += "ORDER BY v.creation_date desc"
-        to_log('SQL request conditions: ' + select[532:-29])
+        to_log('SQL request conditions: ' + select[-64:].upper().replace('ORDER BY V.CREATION_DATE DESC', ''))
         cur.execute(select)
         rows = cur.fetchall()  # Return
         to_log('SQL request return ' + str(cur.rowcount) + ' rows')
@@ -269,27 +279,28 @@ def sql_req(date='xx', znak='eq'):
         return rows
 
 
-# Запрос по task_uuid - получить результат\статус
+# Запрос по TASK_UUID - получить результат\статус
 def get_uuid_req(task_uuid, status='result'):
+    status_arr = ['Success', 'Error1', 'Error2', 'Error3', 'Error4']
     if task_uuid:
         url = BASE_URL + RESULT_URL if status == 'result' else BASE_URL + STATUS_URL
         params = {"token": TOKEN, "task": task_uuid}
         resp = requests.get(url=url, json=params)
         if chk_resp(resp):
             if status == 'result':
-                to_log('Result taken for Task_UUID: ' + task_uuid)
+                to_log('Result taken for TASK_UUID: ' + task_uuid)
                 return resp.json()['response']['result']
             else:
-                to_log('Status ' + str(resp.json()['response']['status']) + ' for Task_UUID: ' + task_uuid)
+                to_log('Status ' + str(status_arr[resp.json()['response']['status']]) + ' for TASK_UUID: ' + task_uuid)
                 return resp.json()['response']['status']
-    to_log('Task_UUID failure: ' + task_uuid, 2)
+    to_log('TASK_UUID failure: ' + task_uuid, 2)
     return False  # TO LOG
 
 
-# Получаем task_uuid из списка бандитов
+# Получаем TASK_UUID из списка бандитов
 def get_uuid(req_array):
     if len(req_array) == 0:
-        to_log('Error while getting Task_UUID. Request array empty.', 2)
+        to_log('Error while getting TASK_UUID. Request array empty.', 2)
         return False  # TO LOG
     reqst = {"token": TOKEN, "request": []}
 
@@ -315,34 +326,34 @@ def get_uuid(req_array):
     url = BASE_URL + GROUP_URL
     response = requests.post(url=url, json=reqst)
     if chk_resp(response):
-        to_log('Get task for ' + str(len(req_array)) + ' requests. Task_UUID: ' + response.json()['response']['task'])
+        to_log('Get task for ' + str(len(req_array)) + ' requests. TASK_UUID: ' + response.json()['response']['task'])
         return response.json()['response']['task']
     else:
-        to_log('Error while getting Task_UUID. ', 1)
+        to_log('Error while getting TASK_UUID. ', 1)
         return False
 
 
 # Проверка пока не выполнится TASK
 def get_uuid_finish(task_uuid):
     if task_uuid is False:
-        to_log('No task to check status. Task UUID error.', 2)
+        to_log('No task to check status. TASK_UUID error.', 2)
         return False
-    to_log('Getting result for tasks. Wait while finish! Task UUID: ' + task_uuid)
+    to_log('Getting result for tasks. Wait while finish! TASK_UUID: ' + task_uuid)
     time.sleep(PAUSE / 3)
     while True:
         status = get_uuid_req(task_uuid, 'status')
         if status is False:
-            to_log('Task status error. Task_UUID: ' + task_uuid, 2)
+            to_log('Task status error. TASK_UUID: ' + task_uuid, 2)
             return False
         if status == 3:
-            to_log('Task params error. Task_UUID: ' + task_uuid, 2)
+            to_log('Task params error. TASK_UUID: ' + task_uuid, 2)
             return False
         elif status == 2:
-            to_log('Task not started. Task_UUID: ' + task_uuid + '. Next Request after ' + str(PAUSE) + ' seconds')
+            to_log('Task not started. TASK_UUID: ' + task_uuid + '. Next Request after ' + str(PAUSE) + ' seconds')
         elif status == 1:
-            to_log('Task not finished. Task_UUID: ' + task_uuid + '. Next Request after ' + str(PAUSE) + ' seconds')
+            to_log('Task not finished. TASK_UUID: ' + task_uuid + '. Next Request after ' + str(PAUSE) + ' seconds')
         elif status == 0:
-            to_log('Task finished. Task_UUID: ' + task_uuid)
+            to_log('Task finished. TASK_UUID: ' + task_uuid)
             return True
         time.sleep(PAUSE)
 
@@ -422,8 +433,9 @@ chk_paths()
 
 # Получаем массив бандитов из БД - если не указанна дата, то за сегодня
 #req_arr = sql_req_home('25.05.2019', znak='eq')
-#req_arr = sql_req('07.06.2019', znak='eq')
-req_arr = sql_req(znak='eq')
+#req_arr = sql_req('17.06.2019', znak='e')
+req_arr = sql_req('22.07.2019', znak='eq')
+#req_arr = sql_req()
 
 
 ''' 
@@ -450,7 +462,7 @@ req_arr.append("65094/16/77024-ИП")
 
 # Удаляем дубли запроса
 req = chk_req_arr(req_arr)
-# Из списка на проверку получаем task_uuid
+# Из списка на проверку получаем TASK_UUID
 task_id = get_uuid(req)
 # Ждем пока TASK_UUID обработаются на сайте ФССП
 if get_uuid_finish(task_id):
