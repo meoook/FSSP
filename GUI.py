@@ -25,7 +25,6 @@ class Main(tk.Frame):
                                     compound=tk.TOP, image=self.edit_img, width=80, height=55)
         btn_edit_dialog.pack(side=tk.LEFT, padx=3)
 
-
         self.tree = ttk.Treeview(self, column=('ID', 'Description', 'Cost', 'Total'), height=15, show='headings')
 
         self.tree.column('ID', width=30, anchor=tk.CENTER)
@@ -40,7 +39,7 @@ class Main(tk.Frame):
 
         self.tree.pack()
 
-    def records(self, description, cost, total):
+    def insert_record(self, description, cost, total):
         self.db.insert_data(description, cost, total)
         self.view_records()
 
@@ -95,9 +94,9 @@ class Child(tk.Toplevel):
 
         self.btn_ok = ttk.Button(self, text='Добавить')
         self.btn_ok.place(x=220, y=170)
-        self.btn_ok.bind('<Button-1>', lambda event: self.view.records(self.entry_description.get(),
-                                                                  self.combobox.get(),
-                                                                  self.entry_money.get()))
+        self.btn_ok.bind('<Button-1>', lambda event: self.view.insert_record(self.entry_description.get(),
+                                                                       self.combobox.get(),
+                                                                       self.entry_money.get()))
 
         # Захват окна
         self.grab_set()
@@ -139,7 +138,7 @@ if __name__ == '__main__':
     db = DB()
     app = Main(root)
     app.pack()
-    root.title("My GUI Test")
+    root.title("Контроль за бюджетом")
     root.geometry('650x393+300+200')
     root.resizable(False, False)
     root.mainloop()

@@ -6,6 +6,10 @@ import psycopg2
 class Main(tk.Frame):
     def __init__(self, root):
         super().__init__(root)
+        # Отобразить встроенные стили
+        print(ttk.Style().theme_names())
+        ttk.Style().theme_use('default')
+
         self.add_img = tk.PhotoImage(file='.\img\windows.gif')
         self.init_main()
         self.db = db
@@ -40,13 +44,19 @@ class Main(tk.Frame):
         self.tree.heading('jail', text='Задержаний')
         self.tree.heading('sum', text='Сумма взысканий')
 
-        print(ttk.Style().theme_names())
-        ttk.Style().theme_use('default')
-        self.tree.grid(row=50, column=5)
-
         self.tree.pack()
 
-    def records(self, description, cost, total):
+        canvas = tk.Canvas(width=1035, height=155, bg='#002')
+        canvas.pack(side='top', expand=tk.YES)
+        canvas.place(y=285)
+
+        [canvas.create_line(10+x*20, 10, 10+x*20, 150, width=1, fill='#191938') for x in range(52)]
+        [canvas.create_line(10, 10+y*20, 1030, 10+y*20, width=1, fill='#191938') for y in range(8)]
+
+        canvas.create_line(20, 80, 1020, 80, width=1, fill='#FFF', arrow=tk.LAST)
+        canvas.create_text(40, 70, text='Пульс', fill='#FFF')
+
+    def insert_record(self, description, cost, total):
         self.db.insert_data(description, cost, total)
         self.view_records()
 
@@ -55,7 +65,7 @@ class Main(tk.Frame):
         select = "SELECT upper(lastname), upper(firstname), upper(secondname), to_char(birthday, 'DD.MM.YYYY'), " \
                  "to_char(creation_date, 'DD.MM.YYYY hh24:mi:ss'), court_adr, court_numb, reestr, " \
                  "md5(concat(upper(lastname), upper(firstname), upper(secondname), to_char(birthday, 'DD.MM.YYYY'))) " \
-                 "FROM fssp as v WHERE creation_date::date >= '24.05.2019'"
+                 "FROM fssp as v WHERE creation_date::date >= '24.05.2019' ORDER BY creation_date DESC"
 #        select += "=" if znak == 'eq' else ">="
 #        select += "current_date " if date == 'xx' else "'" + date + "'"  # Нужна проверочка - что date соответсвует формату
         self.db.cur.execute(select)
@@ -69,10 +79,9 @@ class Main(tk.Frame):
 class Child(tk.Toplevel):
     def __init__(self):
         super().__init__(root)
-        self.init_child()
+
         self.view = app
 
-    def init_child(self):
         self.title('Добавить доходы\расходы')
         self.geometry('400x220+400+300')
         self.resizable(False, False)
@@ -96,9 +105,9 @@ class Child(tk.Toplevel):
 
         btn_ok = ttk.Button(self, text='Добавить')
         btn_ok.place(x=220, y=170)
-        btn_ok.bind('<Button-1>', lambda event: self.view.records(self.entry_description.get(),
-                                                                  self.entry_money.get(),
-                                                                  self.combobox.get()))
+        btn_ok.bind('<Button-1>', lambda event: self.view.insert_record(self.entry_description.get(),
+                                                                        self.entry_money.get(),
+                                                                        self.combobox.get()))
 
         btn_cancel = ttk.Button(self, text='Отмена', command=self.destroy)
         btn_cancel.place(x=300, y=170)
@@ -123,6 +132,6 @@ if __name__ == '__main__':
     app = Main(root)
     app.pack()
     root.title("My GUI Test")
-    root.geometry('1070x400+300+200')
+    root.geometry('1040x450+300+200')
     root.resizable(False, False)
     root.mainloop()
