@@ -452,8 +452,8 @@ chk_paths()
 # Получаем массив бандитов из БД - если не указанна дата, то за сегодня
 #req_arr = sql_req_home('25.05.2019', znak='eq')
 #req_arr = sql_req('17.06.2019', znak='e')
-req_arr = sql_req('22.07.2019', znak='eq')
-#req_arr = sql_req()
+#req_arr = sql_req('22.07.2019', znak='eq')
+req_arr = sql_req()
 
 
 ''' 
