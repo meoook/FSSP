@@ -20,7 +20,7 @@ print('\x1b[93;107m========================\x1b[0m')
 
 
 ''' CONFIG '''
-# PROGRAM CONFIG4
+# PROGRAM CONFIG
 PAUSE = 15                  # Интервал в секундах между запросами (в случае если task не выполнена)
 PARSE_FILE = True           # Будет ли парсится файл? (REQ_FILENAME)
 SAVE_RESULT = True          # Сохранять результат в файл
