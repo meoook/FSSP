@@ -15,7 +15,6 @@ def get_config():
         LOGING = config['LOGING']
         LOG_FILE_NAME = PATH['DIR'] + 'logs\\fssp_' + time.strftime("%d.%m.%y", time.localtime()) + '.log'
         config.set('LOGING', 'LOG_FILE_NAME', LOG_FILE_NAME)
-        return False
     else:   # Default settings
         print('Reading config file\33[93m config.ini\33[0m -\33[91m Fail\33[0m')
         print('Creating config file with default settings.')
