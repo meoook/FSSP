@@ -4,87 +4,107 @@ import time
 import re
 import psycopg2
 import os
+import tkinter as tk
+from tkinter import ttk
+'''
+COLORS
+INFO    93
+ERROR   33
+CRIT    31
+OK      94
+FAIL    91
+'''
 
-
-DEFAULTS = {
-'PAUSE': '15',                # Интервал в секундах между запросами (в случае если task не выполнена)
-'SAVE_RESULT': True,          # Сохранять результат в файл
-'RES_FILE_RENEW': True,       # Обновлять файл с результатами или дописывать в конец файла
-'RES_FILE_HEAD': 'Время, Адрес, Участок, Реестр, Контрольная сумма, Комментарий, Задержан, Сумма штрафов',
-# PATH CONFIG
-'DIR': 'C:\\tmp\\',           # Основная папка
-'RES_FILENAME': 'fssp.csv',   # Куда будут сохрянаться результаты
-# LOG CONFIG
-'LOG_TO_FILE': True,          # Сохранять в файл
-'LOG_LVL': 3,                 # 1 - Critical, 2 - data err, 3 - info(all))
-# PG_SQL CONFIG
-'PG_HOST': '172.17.75.4',
-'PG_USER': 'fssp_read',
-'PG_PWD': '1234',
-'PG_DB_NAME': 'ums',
-# FSSP CONFIG
-'TOKEN': 'k51UxJdRmtyZ',      # Токен, ключик без которого ничего не работает
-'BASE_URL': 'https://api-ip.fssprus.ru/api/v1.0/',
-'GROUP_URL': 'search/group',  # POST мультипоиск ФИЗ\ЮР\ИП
-'STATUS_URL': 'status',       # GET на получение статуса
-'RESULT_URL': 'result'}       # GET на получение результата
-
-print(DEFAULTS['BASE_URL']+DEFAULTS['GROUP_URL'])
 
 class Fssp:
     def __init__(self):
         super().__init__()
         self.get_config()
+        self.save_cfg()
 
+    # CONFIG
     def get_config(self):
-        global OPTIONS, RES_FILE_HEAD, PATH, LOGING, POSTGRESQL, FSSP
-        config = configparser.ConfigParser(defaults=DEFAULTS, allow_no_value=False, empty_lines_in_values=False)
+        self.cfg = configparser.ConfigParser()
+        config = configparser.ConfigParser()
         if config.read('config.ini'):
-            print('Reading config file\33[93m config.ini\33[0m -\33[32m OK\33[0m')
+            print('Reading config file\33[94m config.ini\33[0m -\33[93m OK\33[0m')
+        else:
+            print('Reading config file\33[94m config.ini\33[0m -\33[91m Fail\33[0m')
+        self.cfg.add_section('OPTIONS')     # OPTIONS CONFIG
+        self.cfg.set('OPTIONS', 'PAUSE', config.get('OPTIONS', 'PAUSE', fallback='15'))
+        self.cfg.set('OPTIONS', 'SAVE_RESULT', config.get('OPTIONS', 'SAVE_RESULT', fallback='True'))
+        self.cfg.set('OPTIONS', 'RES_FILE_RENEW', config.get('OPTIONS', 'RES_FILE_RENEW', fallback='True'))
+        self.cfg.set('OPTIONS', 'RES_FILE_HEAD', config.get('OPTIONS', 'RES_FILE_HEAD',
+                    fallback='Время, Адрес, Участок, Реестр, Контрольная сумма, Комментарий, Задержан, Сумма штрафов'))
+#       RES_FILE_HEAD = [v.strip() for v in config['OPTIONS']['RES_FILE_HEAD'].split(',')]
+        self.cfg.add_section('PATH')        # PATH CONFIG
+        self.cfg.set('PATH', 'DIR', config.get('PATH', 'DIR', fallback='C:\\tmp\\'))
+        self.cfg.set('PATH', 'RES_FILENAME', config.get('PATH', 'RES_FILENAME', fallback='fssp.csv'))
+        self.cfg.add_section('POSTGRES')  # PG_SQL CONFIG
+        self.cfg.set('POSTGRES', 'PG_HOST', config.get('POSTGRES', 'PG_HOST', fallback='172.17.75.4'))
+        self.cfg.set('POSTGRES', 'PG_DB_NAME', config.get('POSTGRES', 'PG_DB_NAME', fallback='ums'))
+        self.cfg.set('POSTGRES', 'PG_USER', config.get('POSTGRES', 'PG_USER', fallback='fssp_read'))
+        self.cfg.set('POSTGRES', 'PG_PWD', config.get('POSTGRES', 'PG_PWD', fallback='1234'))
+        self.cfg.add_section('FSSP.RU')     # FSSP CONFIG
+        self.cfg.set('FSSP.RU', 'TOKEN', config.get('FSSP.RU', 'TOKEN', fallback='k51UxJdRmtyZ'))
+        self.cfg.set('FSSP.RU', 'BASE_URL', config.get('FSSP.RU', 'BASE_URL',
+                                                       fallback='https://api-ip.fssprus.ru/api/v1.0/'))
+        self.cfg.set('FSSP.RU', 'GROUP_URL', config.get('FSSP.RU', 'GROUP_URL', fallback='search/group'))
+        self.cfg.set('FSSP.RU', 'STATUS_URL', config.get('FSSP.RU', 'STATUS_URL', fallback='status'))
+        self.cfg.set('FSSP.RU', 'RESULT_URL', config.get('FSSP.RU', 'RESULT_URL', fallback='result'))
+        self.cfg.add_section('LOGS')      # LOG CONFIG
+        self.cfg.set('LOGS', 'LOG_TO_FILE', config.get('LOGS', 'LOG_TO_FILE', fallback='True'))
+        self.cfg.set('LOGS', 'LOG_LVL', config.get('LOGS', 'LOG_LVL', fallback='3'))
+#       log_file_name = PATH['DIR'] + 'Logs\\fssp_' + time.strftime("%d.%m.%y", time.localtime()) + '.log'
+        if not configparser.ConfigParser().read('config.ini'):
+            print('Creating config file\33[94m config.ini\33[0m with default settings')
+        self.save_cfg()
 
-            if config.has_section('OPTIONS'):
-                OPTIONS = config['OPTIONS']
-            else:
-                config.add_section('OPTIONS')
+    def save_cfg(self):
+        with open('config.ini', 'w') as cfg_file:
+            self.cfg.write(cfg_file)
 
-            config.get('OPTIONS', 'Pause', fallback='TEST')
 
-#            if not config.get('OPTIONS', 'Pause') or not config['OPTIONS'].getint('Pause'):
-#                config.set('OPTIONS', 'Pause', DEFAULTS['PAUSE'])
-            RES_FILE_HEAD = [v.strip() for v in config['OPTIONS']['RES_FILE_HEAD'].split(',')]
-            PATH = config['PATH']
-            POSTGRESQL = config['POSTGRESQL']
-            FSSP = config['FSSP.RU']
-            LOGING = config['LOGING']
-            LOG_FILE_NAME = PATH['DIR'] + 'logs\\fssp_' + time.strftime("%d.%m.%y", time.localtime()) + '.log'
-            config.set('LOGING', 'LOG_FILE_NAME', LOG_FILE_NAME)
-        else:   # Default settings
-            print('Reading config file\33[93m config.ini\33[0m -\33[91m Fail\33[0m')
-            print('Creating config file with default settings.')
-            config['OPTIONS'] = {'PAUSE': '15',
-                                 'SAVE_RESULT': 'True',
-                                 'RES_FILE_RENEW': 'True',
-                                 'RES_FILE_HEAD': 'Время, Адрес, Участок, Реестр, Контрольная сумма,'
-                                                  'Комментарий, Задержан, Сумма штрафов'}
-            config['PATH'] = {'DIR': 'C:\\tmp\\',
-                              'RES_FILENAME': 'fssp.csv'}
-            config['LOGING'] = {'LOG_TO_FILE': 'True',
-                                'LOG_LVL': '3'}
-            config['POSTGRESQL'] = {'PG_HOST': '172.17.75.4',
-                                    'PG_USER': 'fssp_read',
-                                    'PG_PWD': '1234',
-                                    'PG_DB_NAME': 'ums'}
-            config['FSSP.RU'] = {'TOKEN': 'k51UxJdRmtyZ',
-                                 'BASE_URL': 'https://api-ip.fssprus.ru/api/v1.0/',
-                                 'GROUP_URL': 'search/group',
-                                 'STATUS_URL': 'status',
-                                 'RESULT_URL': 'result'}
-            with open('config.ini', 'w') as ConfigFile:
-                config.write(ConfigFile)
-            self.get_config()
+class AppWindow:
+    def __init__(self, master):
+        super().__init__()
+        # Отобразить встроенные стили
+        print(ttk.Style().theme_names())
+        ttk.Style().theme_use('default')
 
+        self.add_img = tk.PhotoImage(file='.\img\windows.gif')
+        self.init_main(master)
+        self.mmm = root
+
+    def init_main(self, mm):
+        self.toolbar = tk.Frame(mm, bg='#d3d3d3', bd=2)
+        self.toolbar.pack(side=tk.TOP, fill=tk.X)
+
+        btn_open_dialog = tk.Button(self.toolbar, text='Add position', command=self.gui_quit, bg="#f4f4f4", bd=0,
+                                    compound=tk.TOP, image=self.add_img)
+        btn_open_dialog.pack(side=tk.LEFT)
+
+        canvas = tk.Canvas(mm, width=1035, height=155, bg='#002')
+        canvas.pack(side='top', expand=tk.YES)
+        canvas.place(y=285)
+
+        [canvas.create_line(10+x*20, 10, 10+x*20, 150, width=1, fill='#191938') for x in range(52)]
+        [canvas.create_line(10, 10+y*20, 1030, 10+y*20, width=1, fill='#191938') for y in range(8)]
+
+        canvas.create_line(20, 80, 1020, 80, width=1, fill='#FFF', arrow=tk.LAST)
+        canvas.create_text(40, 70, text='Пульс', fill='#FFF')
+
+    def gui_quit(self):
+        self.mmm.quit()
 
 
 if __name__ == '__main__':
     app = Fssp()
-    print(OPTIONS['Pause'])
+    print(app.cfg['POSTGRES']['PG_HOST'])
+    root = tk.Tk()
+    main_window = AppWindow(root)
+    root.title("My GUI Test")
+    root.geometry('1040x450+300+200')
+    root.resizable(False, False)
+    root.mainloop()
+

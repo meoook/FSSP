@@ -4,12 +4,11 @@ import re
 import psycopg2
 import os
 '''
-COLOR MESSAGE
-COMMON  93
-INFO    94
+COLORS
+INFO    93
 ERROR   33
 CRIT    31
-OK      32
+OK      94
 FAIL    91
 '''
 print('\x1b[93;107m===== FSSP Checker =====\x1b[0m')
