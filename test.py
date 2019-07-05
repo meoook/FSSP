@@ -21,6 +21,7 @@ class Fssp:
         super().__init__()
         self.get_config()
         self.save_cfg()
+        self.app_window()
 
     # CONFIG
     def get_config(self):
@@ -64,6 +65,14 @@ class Fssp:
         with open('config.ini', 'w') as cfg_file:
             self.cfg.write(cfg_file)
 
+    def app_window(self):
+        root = tk.Tk()
+        AppWindow(root)
+        root.title("My GUI Test")
+        root.geometry('1040x450+300+200')
+        root.resizable(False, False)
+        root.mainloop()
+
 
 class AppWindow:
     def __init__(self, master):
@@ -74,17 +83,26 @@ class AppWindow:
 
         self.add_img = tk.PhotoImage(file='.\img\windows.gif')
         self.init_main(master)
-        self.mmm = root
 
-    def init_main(self, mm):
-        self.toolbar = tk.Frame(mm, bg='#d3d3d3', bd=2)
+    def init_main(self, master):
+        self.toolbar = tk.Frame(master, bg='#d3d3d3', bd=2)
         self.toolbar.pack(side=tk.TOP, fill=tk.X)
+
+        menu_bar = tk.Menu(self.toolbar)
+
+        menu_file = tk.Menu(menu_bar)
+        menu_bar.add_cascade(label="File", menu=menu_file)
+
+        menu_file.add_command(label='New file...', command=self.gui_quit)
+        menu_file.add_command(label='Options', command=self.gui_quit)
+        menu_file.add_command(label='Exit', command=self.gui_quit)
+
 
         btn_open_dialog = tk.Button(self.toolbar, text='Add position', command=self.gui_quit, bg="#f4f4f4", bd=0,
                                     compound=tk.TOP, image=self.add_img)
         btn_open_dialog.pack(side=tk.LEFT)
 
-        canvas = tk.Canvas(mm, width=1035, height=155, bg='#002')
+        canvas = tk.Canvas(master, width=1035, height=155, bg='#002')
         canvas.pack(side='top', expand=tk.YES)
         canvas.place(y=285)
 
@@ -95,16 +113,9 @@ class AppWindow:
         canvas.create_text(40, 70, text='Пульс', fill='#FFF')
 
     def gui_quit(self):
-        self.mmm.quit()
+        self.toolbar.quit()
 
 
 if __name__ == '__main__':
     app = Fssp()
     print(app.cfg['POSTGRES']['PG_HOST'])
-    root = tk.Tk()
-    main_window = AppWindow(root)
-    root.title("My GUI Test")
-    root.geometry('1040x450+300+200')
-    root.resizable(False, False)
-    root.mainloop()
-
