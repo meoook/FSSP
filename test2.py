@@ -1,22 +1,12 @@
-import tkinter as tk
 
+def anton(x,y):
+    print(x*y)
 
-class Gui:
+def sanek(x, y):
+    for xa in range(x):
+        anton(xa,y)
 
-    def __init__(self, master):
-        frame = tk.Frame(master)
-        frame.pack()
+x = 50
+y = 12
 
-        self.btn_tt = tk.Button(frame, text='This blank Button', command=self.msg)
-        self.btn_tt.pack(side=tk.LEFT)
-
-        self.btn_quit = tk.Button(frame, text='Quit', command=frame.quit)
-        self.btn_quit.pack(side=tk.LEFT)
-
-    def msg(self):
-        print('Test')
-
-
-root = tk.Tk()
-b = Gui(root)
-root.mainloop()
+sanek(x,y)
