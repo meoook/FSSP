@@ -16,6 +16,20 @@ FAIL    91
 '''
 
 
+class DB:
+    def __init__(self):
+        self.conn = psycopg2.connect(host='localhost', user='postgres', password=111, database='skuns')
+        self.cur = self.conn.cursor()
+
+    # Делаем SELECT
+    def select_sql(self):
+        select = "SELECT upper(lastname), upper(firstname), upper(secondname), to_char(birthday, 'DD.MM.YYYY'), " \
+                 "to_char(creation_date, 'DD.MM.YYYY hh24:mi:ss'), court_adr, court_numb, reestr, " \
+                 "md5(concat(upper(lastname), upper(firstname), upper(secondname), to_char(birthday, 'DD.MM.YYYY'))) " \
+                 "FROM fssp as v WHERE creation_date::date >= '24.05.2019' ORDER BY creation_date DESC"
+        self.cur.execute(select)
+
+
 class Gui(tk.Tk):
     def __init__(self, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
@@ -90,6 +104,7 @@ class Gui(tk.Tk):
         btn1.pack(side=tk.LEFT)
         btn2 = ttk.Button(toolbar, command=lambda: self.get_req_data(), image=self.play)
         btn2.pack(side=tk.LEFT)
+#        btn2.bind('<Button-1>', lambda event: self.view_records())
 
     # Табло для отображения логов
     def log_window(self):
@@ -111,22 +126,6 @@ class Gui(tk.Tk):
     # Собираем данные для request -> fssp.ru
     def get_req_data(self):
         self.show_frame(MainPage)
-#        self.quit()
-        '''
-        [self.tree.delete(i) for i in self.tree.get_children()]
-        self.tree.insert('', 'end', values=['xaxa', 'xaxaxa', 'xaxaxaxa'])
-
-        # Делаем SELECT
-        select = "SELECT upper(lastname), upper(firstname), upper(secondname), to_char(birthday, 'DD.MM.YYYY'), " \
-                 "to_char(creation_date, 'DD.MM.YYYY hh24:mi:ss'), court_adr, court_numb, reestr, " \
-                 "md5(concat(upper(lastname), upper(firstname), upper(secondname), to_char(birthday, 'DD.MM.YYYY'))) " \
-                 "FROM fssp as v WHERE creation_date::date >= '24.05.2019' ORDER BY creation_date DESC"
-#        select += "=" if znak == 'eq' else ">="
-#        select += "current_date " if date == 'xx' else "'" + date + "'"  # Нужна проверочка - что date соответсвует формату
-        self.db.cur.execute(select)
-        [self.tree.delete(i) for i in self.tree.get_children()]
-        [self.tree.insert('', 'end', values = row[4:]) for row in self.db.cur.fetchall()]
-        '''
 
     # CONFIG
     def get_config(self):
@@ -175,14 +174,13 @@ class Gui(tk.Tk):
 class MainPage(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
-        self.pack(side='top')
-
+        self.tree = ttk.Treeview(self, column=('dt', 'adr', 'court', 'rst', 'csum', 'comm', 'jail', 'sum'),
+                                 height=10, show='headings', padding=0, selectmode='browse')
         self.show_tree()
+        self.view_records([('xaxa', 'xaxaxa', 'xaxaxaxa'), ('xaxa', 'xaxaxa', 'xaxaxaxa')])
 
     # Таблица для вывода результатов
     def show_tree(self):
-        self.tree = ttk.Treeview(self, column=('dt', 'adr', 'court', 'rst', 'csum', 'comm', 'jail', 'sum'),
-                                 height=10, show='headings', padding=0, selectmode='browse')
 
         self.tree.column('dt', width=110, anchor=tk.CENTER)
         self.tree.column('adr', width=250, anchor=tk.W)
@@ -204,6 +202,11 @@ class MainPage(tk.Frame):
 
         self.tree.pack(side='top')
 
+    def view_records(self, arr=[]):
+        print('test', arr)
+        [self.tree.delete(i) for i in self.tree.get_children()]
+#        self.tree.insert('', 'end', values=['xaxa', 'xaxaxa', 'xaxaxaxa'])
+        [self.tree.insert('', 'end', values=row) for row in arr]
 
 # Фрейм для страницы настроек
 class SettingsPage(tk.Frame):
