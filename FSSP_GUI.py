@@ -63,8 +63,6 @@ class Main(tk.Frame):
     def view_records(self):
         [self.tree.delete(i) for i in self.tree.get_children()]
         self.tree.insert('', 'end', values=['xaxa', 'xaxaxa', 'xaxaxaxa'])
-
-        '''
         # Делаем SELECT
         select = "SELECT upper(lastname), upper(firstname), upper(secondname), to_char(birthday, 'DD.MM.YYYY'), " \
                  "to_char(creation_date, 'DD.MM.YYYY hh24:mi:ss'), court_adr, court_numb, reestr, " \
@@ -73,9 +71,9 @@ class Main(tk.Frame):
 #        select += "=" if znak == 'eq' else ">="
 #        select += "current_date " if date == 'xx' else "'" + date + "'"  # Нужна проверочка - что date соответсвует формату
         self.db.cur.execute(select)
+        print(self.db.cur.fetchall())
         [self.tree.delete(i) for i in self.tree.get_children()]
         [self.tree.insert('', 'end', values = row[4:]) for row in self.db.cur.fetchall()]
-        '''
 
     def open_dialog(self):
         Child()
@@ -124,9 +122,8 @@ class Child(tk.Toplevel):
 
 class DB:
     def __init__(self):
-        pass
-#        self.conn = psycopg2.connect(host='localhost', user='postgres', password=111, database='skuns')
-#        self.cur = self.conn.cursor()
+        self.conn = psycopg2.connect(host='localhost', user='postgres', password=111, database='skuns')
+        self.cur = self.conn.cursor()
 
 #    def insert_data(self, description, cost, total):
 #        self.cur.execute('INSERT INTO finance(description, costs, total) VALUES (?, ?, ?)', (description, cost, total))

@@ -25,7 +25,7 @@ class Main(tk.Frame):
                                     compound=tk.TOP, image=self.edit_img, width=80, height=55)
         btn_edit_dialog.pack(side=tk.LEFT, padx=3)
 
-        self.tree = ttk.Treeview(self, column=('ID', 'Description', 'Cost', 'Total'), height=15, show='headings')
+        self.tree = ttk.Treeview(self, columns=('ID', 'Description', 'Cost', 'Total'), height=15, show='headings')
 
         self.tree.column('ID', width=30, anchor=tk.CENTER)
         self.tree.column('Description', width=365, anchor=tk.CENTER)
@@ -53,8 +53,10 @@ class Main(tk.Frame):
         self.db.c.execute('''SELECT * FROM finance''')
         [self.tree.delete(i) for i in self.tree.get_children()]
         [self.tree.insert('', 'end', values = row) for row in self.db.c.fetchall()]
+        print(self.tree.get_children())
 
     def open_dialog(self):
+        print(self.tree.delete('I001'))
         Child()
 
     def open_update_dialog(self):
