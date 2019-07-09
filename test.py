@@ -189,7 +189,8 @@ class Gui(tk.Tk):
                                      weekendbackground='#888',
                                      weekendforeground='#111',
                                      headersbackground='#EEE',
-                                     headersforeground='#666', style='C.TButton')
+                                     headersforeground='#666',
+                                     style='C.TButton')
         self.select_date.pack(side='left', ipadx=0, anchor=tk.CENTER)
         # DEBUG
         self.select_date.delete(0, tk.END)

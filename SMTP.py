@@ -2,6 +2,15 @@ import smtplib
 #from email.message import EmailMessage
 import email
 
+'''
+SMTP = 10.89.65.20
+helo 'mos.ru"
+port 25
+starttls on
+user\password
+APKUMS
+'''
+
 HOST = "mail.it2g.ru"  # OMG HOST
 SMTP = 'eps-relay01.mos.ru'
 PORT = 25       # 587 for gmail\mail.ru
