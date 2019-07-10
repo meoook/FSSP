@@ -63,7 +63,6 @@ class Gui(tk.Tk):
         style = ttk.Style()
         print(style.theme_names())
         style.theme_use('vista')
-        print(style.element_names())
 
         # App window Settings
         self.title("Проверяльщик ФССП")                    # Название
@@ -90,6 +89,23 @@ class Gui(tk.Tk):
                             'user': self.cfg['POSTGRES']['USER'], 'pwd': self.cfg['POSTGRES']['PWD']})
         # При запуске показываем заглавную страницу
         self.show_frame(MainPage)
+
+    # === Experements ===========================
+
+        # self.bind('<Button-1>', lambda event: self.quit())
+        self.bind('<Button-1>', lambda e: self.infoo(e))  # LoL function
+        self.bind('<FocusOut>', lambda event, arg=self: self.destr(arg, event))  # LoL function
+
+    def destr(self, arg, event=None):
+        print('destroy', arg)
+        arg.destroy()
+
+    def infoo(self, event=None):
+        print('widget:', event.widget, event.x, event.y)
+        print('focus:', self.focus_get())
+
+
+    # ===========================================
 
     # Главное меню (полоска)
     def menu_bar(self):
@@ -143,14 +159,12 @@ class Gui(tk.Tk):
 
         # STYLE STYLE STYLE :)
         st = ttk.Style()
+        st.configure("Line.TSeparator", background="#fff")
+        st.configure("C.TButton", padding=(0, 0, 0, 0))
         st.map("C.TButton",
                foreground=[('pressed', 'red'), ('active', 'green')],
                background=[('pressed', '!disabled', 'black'), ('active', 'white')],
                relief=[('pressed', '!disabled', 'sunken')])
-        st.configure("C.TButton", padding=(0, 0, 0, 0))
-
-        st.configure("Line.TSeparator", background="#fff")
-
         st.theme_settings("vista", {
             "TCombobox": {"configure": {"padding": 0},
                         "map": {"background": [("active", "green2"), ("!disabled", "green4"), ("selected", "black")],
@@ -159,9 +173,6 @@ class Gui(tk.Tk):
                                 "activeforeground": [('selected', 'black')],
                                 "relief": [('pressed', '!disabled', 'sunken')]}
                         }})
-
-        print(st.layout('TCombobox'))
-        print(st.element_options('Entry.padding'))
         # END STYLE
 
         self.select_znak = ttk.Combobox(toolbar, values=[u'За', u'С'], width=3)
