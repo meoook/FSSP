@@ -50,7 +50,7 @@ class CalPopup(tk.Tk):    # Change to Toplevel
 
     def check_this_button(self, event):
         ww = event.widget
-        text = ww['text'] if ww['text'] else 'tt'
+        text = ww['font'] if ww['font'] else ww['text']
         print(text, ww['state'])
         ww.config(state="active")
 
