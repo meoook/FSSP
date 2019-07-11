@@ -98,7 +98,7 @@ class Gui(tk.Tk):
 
     def destr(self, arg, event=None):
         print('destroy', arg)
-        arg.destroy()
+        #arg.destroy()
 
     def infoo(self, event=None):
         print('widget:', event.widget, event.x, event.y)
