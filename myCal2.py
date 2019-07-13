@@ -73,13 +73,19 @@ class CalPopup(tk.Tk):   # Change to Toplevel
         # Today & Selected
         self.sel = [int(n) for n in time.strftime("%Y %m %d", time.localtime()).split()]
         self.__curr = self.sel[0:2]
+        # String vars to change values without маргание
+        self.__day_vars = [tk.StringVar() for x in range(7*6) if x < 43]
         self.__current_m_name = tk.StringVar()
-        # Calendar create
-        self.__cal_fr = tk.Frame(self)
-        self.cal_popup(self.sel[1], self.sel[0])
+        # Calendar create - 3 строки ниже можно убрать
+        self.popup()
 
-    def cal_popup(self, month, year):
-        self.__current_m_name.set(self.__month_names[month])
+    def popup(self):
+        # Building calendar
+        self.__nav_build()
+        self.__matrix_create_frames()
+        self.__matrix_change(self.sel[1], self.sel[0])
+
+    def __nav_build(self):
         # Navigation
         nav_frame = tk.Frame(self)
         nav_frame.pack(side='top', fill=tk.X)  # raised/sunken ridge/groove flat/solid
@@ -91,36 +97,54 @@ class CalPopup(tk.Tk):   # Change to Toplevel
         btn_prev.pack(side='left')
         month_name.pack(side='left', fill=tk.X, expand=True, pady=0.5)
         btn_next.pack(side='left')
-        # Building calendar
-        self.__cal_build(month, year)
 
-    def __cal_build(self, month, year):
-        #self.__cal_fr.destroy()
-        self.__cal_destroy()
-        self.__cal_fr.pack(side='top')
-        # Week days
+    def __matrix_create_frames(self):
+        cal_fr = tk.Frame(self)
+        cal_fr.pack(side='top', fill='both')
+        # Week days (here for normal grid)
         for i, week_day in enumerate(self.__week_names):
-            weekl = tk.Label(self.__cal_fr, text=week_day, font=self.week_font, width=2, pady=0, padx=0, relief='raised', borderwidth=1)
-            weekl.grid(row=0, column=i, ipadx=0, ipady=0, sticky='NSEW')
+            week = tk.Label(cal_fr, text=week_day, font=self.week_font, width=2, relief='raised', borderwidth=1)
+            week.grid(row=0, column=i, ipadx=0, ipady=0, sticky='NSEW')
+        self.__cells = [tk.Label(cal_fr, textvariable=self.__day_vars[i], relief='ridge') for i in range(42)]
+
+    def __matrix_grid(self):
+        row = 0
+        for i in range(42):
+            row = row + 1 if i % 7 == 0 else row
+            x = i-(row-1)*7
+            if i in range(self.__curr[2]):
+                self.__cells[i].grid(row=row, column=x, ipadx=4, ipady=0)
+            else:
+                #self.cells[i].grid_remove()
+                self.__cells[i].grid_forget()
+
+    def __matrix_change(self, month, year):
+        #self.__curr.append(len(list(cal_array)))
+        self.__current_m_name.set(self.__month_names[month])
         cal_array = calendar.TextCalendar(firstweekday=0).itermonthdays4(year, month)
-        row = 1
+        # COUNT DAYS AND FINISH GRID !!!
+        # COUNT DAYS AND FINISH GRID !!!
+        # COUNT DAYS AND FINISH GRID !!!
+        # COUNT DAYS AND FINISH GRID !!!
+        # COUNT DAYS AND FINISH GRID !!!
+        xx = len([*cal_array])
+        self.__curr.append(xx)
+        print(xx)
         for i, day in enumerate(cal_array):
-            day_info = {'year': day[0], 'month': day[1], 'day': day[2], 'week': day[3],
-                        'holiday': True if day[3] in (5, 6) else False, 'month_sel': 'current'}
-            # Проверка на дни с прошлого\текущего\предыдущего месяца
+            self.__day_vars[i].set(day[2])
+            holiday = True if day[3] in (5, 6) else False
+            # Проверка на дни с прошлого\текущего\следующего месяца
+            what_month = 'current'
             if i < 7 and day[2] > 20:
-                day_info['month_sel'] = 'prev'
+                what_month = 'prev'
             elif i > 20 and day[2] < 7:
-                day_info['month_sel'] = 'next'
+                what_month = 'next'
             # Set Label style
-            cell_style = self.__get_style(day_info['holiday'], day_info['month_sel'])
             state = 'active' if all([self.sel[0] == day[0], self.sel[1] == day[1], self.sel[2] == day[2]]) else 'normal'
-            current = tk.Label(self.__cal_fr, cell_style, text=day[2], state=state, relief='ridge')
-            current.grid(row=row, column=day[3], ipadx=4, ipady=0)
-            current.day_info = day_info
-            self.__bind_hover(current)
-            row = row + 1 if day[3] == 6 else row
-        self.update()
+            self.__cells[i].config(self.__get_style(holiday, what_month), state=state)
+            self.__cells[i].what_m = what_month     # Не нравится ему так, хотя в другом файле для dict норм
+            self.__bind_hover(self.__cells[i])
+        self.__matrix_grid()
 
     def __cal_destroy(self):
         print('Remove all child')
@@ -142,17 +166,18 @@ class CalPopup(tk.Tk):   # Change to Toplevel
 
     def __check_this_button(self, event):
         ww = event.widget
+        var = ww.what_m
+        print(var)
         if 'label' not in str(ww):  # or ww.winfo_name()
             print('GRID Error. Clicked not on {} widget'.format(str(ww)))
             return False
         if isinstance(ww['text'], int):
-            print(ww.day_info, 'State:', ww['state'])
-            if ww.day_info['month_sel'] == 'prev':
+            if var == 'prev':
                 self.__prev_m()
-            elif ww.day_info['month_sel'] == 'next':
+            elif var == 'next':
                 self.__next_m()
             else:
-                self.__date_selected(ww)
+                self.__day_select(ww)
         elif ww['text'] == '<<<':
             self.__change_month('prev')
         elif ww['text'] == '>>>':
@@ -178,11 +203,10 @@ class CalPopup(tk.Tk):   # Change to Toplevel
             self.__curr = [self.__curr[0]+1, 1] if self.__curr[1] == 12 else [self.__curr[0], self.__curr[1]+1]
         elif direction == 'prev':
             self.__curr = [self.__curr[0]-1, 12] if self.__curr[1] == 1 else [self.__curr[0], self.__curr[1]-1]
-        self.__current_m_name.set(self.__month_names[self.__curr[1]])
         self.__cal_build(self.__curr[1], self.__curr[0])
         print('result', self.__curr)
 
-    def __date_selected(self, widget):
+    def __day_select(self, widget):
         widget.config(state="active")
 
     def __save_n_close(self):
