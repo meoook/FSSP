@@ -11,7 +11,7 @@ Widget parameters:
     font_size:           (int) to change widget font size of PopUp window
     not_current_is_nav: (bool) to navigate with other(not current) month days
 Next version: Trying canvas for year transparent. Del LABEL_OPTIONS :)
-"""
+
 LABEL_OPTIONS = {'activebackground': 'SystemButtonFace',    # BG color when state = disabled
                  'activeforeground': 'SystemButtonText',    # Font color when state = disabled
                  'anchor': 'center',                # n/ne/e/se/s/sw/w/nw/center
@@ -42,6 +42,7 @@ LABEL_OPTIONS = {'activebackground': 'SystemButtonFace',    # BG color when stat
                  'height': 4,                       # In chars
                  'wraplength': 12,                  # Text maximum width in cell (in chars)
                  'takefocus': 0}
+"""
 
 
 class DatePicker(tk.Label):   # Class polymorph from tk.Label
