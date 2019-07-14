@@ -55,11 +55,11 @@ class CalPopup(tk.Tk):   # Change to Toplevel
                      'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь')
     __week_names = ('Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс')
     # Font Settings
-    font_size = 34
+    font_size = 24
     font_size = font_size if font_size <= 50 else 50    # Maximum font_size for CSS without errors.
     font = ('Roboto', font_size) #, 'bold')  # Times/Verdana/Lucida/Tempus Sans ITC/Console/Courier/Helvetica   italic
     week_font = ('Console', int(font_size//1.6))
-    not_current_is_nav = True       # Даты не текущего месяца являются кнопками навигации
+    not_current_is_nav = False       # Даты не текущего месяца являются кнопками навигации
 
     def __init__(self):
         super().__init__()
@@ -71,11 +71,12 @@ class CalPopup(tk.Tk):   # Change to Toplevel
         self.bind('<FocusOut>', lambda event: self.destroy())   # When the window lose focus
         self.bind('<Button-1>', self.__check_this_button)       # What button we click
         # Today & Selected
-        self.sel = [int(n) for n in time.strftime("%Y %m %d", time.localtime()).split()]
-        self.__curr = self.sel[0:2]
+        self.sel = [int(n) for n in time.strftime("%d %m %Y", time.localtime()).split()]
+        self.__curr = self.sel[1:3]
         # String vars to change values without маргание
         self.__day_vars = [tk.StringVar() for x in range(7*6) if x < 43]
-        self.__current_m_name = tk.StringVar()
+        self.__curr_m_name = tk.StringVar()
+        self.__curr_y_name = tk.StringVar()
         # Calendar create - 3 строки ниже можно убрать
         self.popup()
 
@@ -83,20 +84,22 @@ class CalPopup(tk.Tk):   # Change to Toplevel
         # Building calendar
         self.__nav_build()
         self.__matrix_create_frames()
-        self.__matrix_change(self.sel[1], self.sel[0])
+        self.__matrix_change()
 
     def __nav_build(self):
         # Navigation
         nav_frame = tk.Frame(self)
         nav_frame.pack(side='top', fill=tk.X)  # raised/sunken ridge/groove flat/solid
         btn_prev = tk.Label(nav_frame, text='<<<', font=self.font, width=4, relief='raised', highlightthickness=0, cursor='hand2', borderwidth=1, highlightbackground='#CCC')
-        month_name = tk.Label(nav_frame, textvariable=self.__current_m_name, font=self.font, relief='raised', highlightthickness=0, borderwidth=1)
+        month_name = tk.Label(nav_frame, textvariable=self.__curr_m_name, font=self.font, relief='raised', highlightthickness=0, borderwidth=1)
         btn_next = tk.Label(nav_frame, text='>>>', font=self.font, width=4, relief='raised', highlightthickness=0, cursor='hand2', borderwidth=1, highlightbackground='#CCC')
+        year_name = tk.Label(nav_frame, textvariable=self.__curr_y_name, font=('Console', int(self.font_size//2.6)), fg='#111')
         self.__bind_hover(btn_prev)
         self.__bind_hover(btn_next)
         btn_prev.pack(side='left')
-        month_name.pack(side='left', fill=tk.X, expand=True, pady=0.5)
+        month_name.pack(side='left', fill='x', expand=True, pady=0.5)
         btn_next.pack(side='left')
+        year_name.place(rely=0.0, relx=0.67, relheight=0.4, relwidth=0.09)
 
     def __matrix_create_frames(self):
         cal_fr = tk.Frame(self)
@@ -107,44 +110,34 @@ class CalPopup(tk.Tk):   # Change to Toplevel
             week.grid(row=0, column=i, ipadx=0, ipady=0, sticky='NSEW')
         self.__cells = [tk.Label(cal_fr, textvariable=self.__day_vars[i], relief='ridge') for i in range(42)]
 
-    def __matrix_grid(self):
+    def __matrix_change(self):
+        self.__curr_m_name.set(self.__month_names[self.__curr[0]])
+        self.__curr_y_name.set(self.__curr[1])
+        cal_array = list(calendar.TextCalendar(firstweekday=0).itermonthdays4(self.__curr[1], self.__curr[0]))
         row = 0
-        for i in range(42):
-            row = row + 1 if i % 7 == 0 else row
-            x = i-(row-1)*7
-            if i in range(self.__curr[2]):
-                self.__cells[i].grid(row=row, column=x, ipadx=4, ipady=0)
-            else:
-                #self.cells[i].grid_remove()
-                self.__cells[i].grid_forget()
-
-    def __matrix_change(self, month, year):
-        #self.__curr.append(len(list(cal_array)))
-        self.__current_m_name.set(self.__month_names[month])
-        cal_array = calendar.TextCalendar(firstweekday=0).itermonthdays4(year, month)
-        # COUNT DAYS AND FINISH GRID !!!
-        # COUNT DAYS AND FINISH GRID !!!
-        # COUNT DAYS AND FINISH GRID !!!
-        # COUNT DAYS AND FINISH GRID !!!
-        # COUNT DAYS AND FINISH GRID !!!
-        xx = len([*cal_array])
-        self.__curr.append(xx)
-        print(xx)
         for i, day in enumerate(cal_array):
             self.__day_vars[i].set(day[2])
             holiday = True if day[3] in (5, 6) else False
-            # Проверка на дни с прошлого\текущего\следующего месяца
+            # Direction: дни с прошлого\текущего\следующего месяца
             what_month = 'current'
             if i < 7 and day[2] > 20:
-                what_month = 'prev'
+                what_month = '<<<'
             elif i > 20 and day[2] < 7:
-                what_month = 'next'
+                what_month = '>>>'
             # Set Label style
-            state = 'active' if all([self.sel[0] == day[0], self.sel[1] == day[1], self.sel[2] == day[2]]) else 'normal'
-            self.__cells[i].config(self.__get_style(holiday, what_month), state=state)
-            self.__cells[i].what_m = what_month     # Не нравится ему так, хотя в другом файле для dict норм
-            self.__bind_hover(self.__cells[i])
-        self.__matrix_grid()
+            state = 'active' if all([self.sel[0] == day[2], self.sel[1] == day[1], self.sel[2] == day[0]]) else 'normal'
+            cell, style = self.__cells[i], self.__get_style(holiday, what_month)
+            cell.config(style, state=state)
+            row = row + 1 if day[3] == 0 else row
+            cell.grid(row=row, column=day[3], ipadx=4, ipady=0)
+            cell.what_m = what_month
+            self.__bind_hover(cell)
+        self.__matrix_grid(len(cal_array))
+
+    def __matrix_grid(self, n):
+        for i in range(n, 42):
+            #self.cells[i].grid_remove()
+            self.__cells[i].grid_forget()
 
     def __cal_destroy(self):
         print('Remove all child')
@@ -166,24 +159,25 @@ class CalPopup(tk.Tk):   # Change to Toplevel
 
     def __check_this_button(self, event):
         ww = event.widget
-        var = ww.what_m
-        print(var)
         if 'label' not in str(ww):  # or ww.winfo_name()
-            print('GRID Error. Clicked not on {} widget'.format(str(ww)))
+            print('GRID Error. Clicked not on {} widget'.format(str(ww)))   # To log
             return False
-        if isinstance(ww['text'], int):
-            if var == 'prev':
-                self.__prev_m()
-            elif var == 'next':
-                self.__next_m()
+        try:
+            ww.what_m
+        except Exception as e:
+            if ww['text'] in ('<<<', '>>>'):
+                self.__curr_change(ww['text'])
             else:
-                self.__day_select(ww)
-        elif ww['text'] == '<<<':
-            self.__change_month('prev')
-        elif ww['text'] == '>>>':
-            self.__change_month('next')
-        else:
-            print('You press Nav bar')
+                print('You press', ww, e)       # To log
+                return False
+        if isinstance(ww['text'], int) and ww['text'] < 32:
+            self.__curr_change(ww.what_m)
+            if not self.not_current_is_nav or ww.what_m == 'current':
+                self.sel = [ww['text'], self.__curr[0], self.__curr[1]]
+                self.__save_n_close()
+                #return True
+        print(self.__curr, self.sel)
+        self.__matrix_change()
 
     # bind: mouse on widget
     def __bind_hover(self, widget):
@@ -192,22 +186,11 @@ class CalPopup(tk.Tk):   # Change to Toplevel
         widget.bind('<Enter>', lambda event, bg=enter_color: widget.config(background=bg))
         widget.bind('<Leave>', lambda event, bg=leave_color: widget.config(background=bg))
 
-    def __prev_m(self):
-        print('Prev month')
-
-    def __next_m(self):
-        print('Next month')
-
-    def __change_month(self, direction):
-        if direction == 'next':
-            self.__curr = [self.__curr[0]+1, 1] if self.__curr[1] == 12 else [self.__curr[0], self.__curr[1]+1]
-        elif direction == 'prev':
-            self.__curr = [self.__curr[0]-1, 12] if self.__curr[1] == 1 else [self.__curr[0], self.__curr[1]-1]
-        self.__cal_build(self.__curr[1], self.__curr[0])
-        print('result', self.__curr)
-
-    def __day_select(self, widget):
-        widget.config(state="active")
+    def __curr_change(self, direction):
+        if direction == '<<<':
+            self.__curr = [12, self.__curr[1]-1] if self.__curr[0] == 1 else [self.__curr[0]-1, self.__curr[1]]
+        elif direction == '>>>':
+            self.__curr = [1, self.__curr[1]+1] if self.__curr[0] == 12 else [self.__curr[0]+1, self.__curr[1]]
 
     def __save_n_close(self):
         pass
