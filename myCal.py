@@ -3,14 +3,14 @@ import tkinter as tk
 import time
 """
 Name: Calendar DatePicker
-Version: 1.0
+Version: 1.01
 Author: meok
 Created: 14.07.2019
 Widget parameters:
     date:         (dd.mm.yyyy) to set date
     font_size:           (int) to change widget font size of PopUp window
     not_current_is_nav: (bool) to navigate with other(not current) month days
-Next version: adding styles, font for nav. Trying canvas for year transparent.
+Next version: Trying canvas for year transparent. Del LABEL_OPTIONS :)
 """
 LABEL_OPTIONS = {'activebackground': 'SystemButtonFace',    # BG color when state = disabled
                  'activeforeground': 'SystemButtonText',    # Font color when state = disabled
@@ -81,16 +81,17 @@ class DatePicker(tk.Label):   # Class polymorph from tk.Label
             time.strptime(value, '%d.%m.%Y')
             self.__sel = [int(n) for n in value.split('.')]
         except ValueError:
-            print('\33[94mValue must be date format:\33[93m dd.mm.yyyy\33[0m')
+            print('\33[91mValue\33[93m', value, '\33[91merror. Must be a date format:\33[93m dd.mm.yyyy\33[0m')
         except TypeError:
-            print('\33[94mDate must be string type.\33[0m')
+            print('\33[91mValue\33[93m', value, '\33[91merror. Must be a string type format:\33[93m dd.mm.yyyy\33[0m')
         else:
+            print('\33[94mChanging date to:\33[93m', self.date, '\33[0m')
             self.__date_value.set(self.date)
         # self.__curr = self.__sel[1:3]     # Uncomment & del in PopUp to continue from month we stop, not today month
 
     @property
     def font_size(self):
-        return {'main': self.__font_c, 'weeks': self.__font_w, 'year': self.__font_y, 'nav': '(Next version)'}
+        return {'main': self.__font_c, 'weeks': self.__font_w, 'year': self.__font_y, 'nav': self.__font_n}
 
     @font_size.setter
     def font_size(self, size):
@@ -98,13 +99,13 @@ class DatePicker(tk.Label):   # Class polymorph from tk.Label
         if isinstance(size, int):
             print('\33[94mChanging font size to:\33[93m', size, '\33[0m')
             size = size if size <= 50 else 50  # Maximum font_size for CSS without errors.
-            self.__font_n = ('Console', size)
+            self.__font_n = ('Console', size)   # Font nav = font cell, mb = font main
             self.__font_y = ('Console', int(size // 2.6))
             self.__font_c = ('Console', size)
             self.__font_w = ('Tempus Sans ITC', int(size // 1.6))
             self.__styles_setter()            # Update styles after changing fonts
         else:
-            print('\33[94mSize must be int value. Using defaults.\33[0m')
+            print('\33[91mSize must be int value. Using defaults.\33[0m')
         print('\33[94mUsing fonts:\33[0m')
         print('\33[93m{:5s} \33[92m{main}\33[93m\n{:5s} \33[92m{weeks}\33[93m\n{:5s} \33[92m{year}\33[93m\n{:5s} '
               '\33[92m{nav}\33[0m'.format(*self.font_size, **self.font_size), '\33[0m')
@@ -113,10 +114,11 @@ class DatePicker(tk.Label):   # Class polymorph from tk.Label
         default = {'fg': '#111', 'bg': '#EEE', 'bd': 1, 'relief': 'raised',
                        'activebackground': '#090', 'activeforeground': '#AFA',
                        'highlightthickness': 0, 'highlightbackground': '#CCC'}  # this value used for mouse:hover state
-        self.__style_nav = {'font': self.__font_n, **default, 'pady': 0}
+        self.__style_nav = {'font': self.__font_n, **default, 'pady': 5}
         self.__style_year = {'font': self.__font_y, **default, 'relief': 'flat', 'fg': '#222'}
         self.__style_week = {'font': self.__font_w, **default, 'width': 2}
         self.__style_cell = {'font': self.__font_c, **default, 'width': 2, 'cursor': 'hand2'}
+        # More cell styles in get_cell_style function.
 
     def __popup(self):
         top = tk.Toplevel()
@@ -189,7 +191,7 @@ class DatePicker(tk.Label):   # Class polymorph from tk.Label
     def __check_this_button(self, event):
         ww = event.widget
         if 'label' not in str(ww):  # or ww.winfo_name()
-            print('GRID Error. Clicked not on {} widget'.format(ww))   # To log
+            print('\33[91mGRID Error. Clicked not on {} widget\33[0m'.format(ww))   # To log
             return False
         try:    # Этот параметр есть только у дней календаря
             ww.what_m
@@ -197,7 +199,7 @@ class DatePicker(tk.Label):   # Class polymorph from tk.Label
             if ww['text'] in ('<<<', '>>>'):
                 self.__curr_change(ww['text'])
             else:
-                print('You press', ww, e)       # To log
+                print('\33[94mYou press', ww, e, '\33[0m')       # To log
                 return False
         if isinstance(ww['text'], int) and ww['text'] < 32:
             self.__curr_change(ww.what_m)
@@ -216,7 +218,6 @@ class DatePicker(tk.Label):   # Class polymorph from tk.Label
 
     # Save and close
     def __date_selected(self):
-        print(self.__font_c, self.__style_cell)
         self.date = '.'.join(map(str, self.__sel))
         self.__root.focus_force()     # When PopUp lose focus - it's close. See binds.
 
@@ -250,7 +251,7 @@ if __name__ == '__main__':
     app.not_current_is_nav = True
     app.date = '11.0x2.1115'
     app.date = 123
-    print('\33[93m' + app.date, '\33[0m')
+    app.date = '11.02.1115'
     root.mainloop()
 
 
