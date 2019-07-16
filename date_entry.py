@@ -24,65 +24,63 @@ class DateEntry(tk.Frame):
         self.month.bind('<KeyPress>', self._press)
         self.month.bind('<KeyRelease>', self._release)
         self.year.bind('<KeyPress>', self._press)
-        self.year.bind('<KeyRelease>', lambda event: self._release(event, 'year'))
+        self.year.bind('<KeyRelease>', self._release)
 
-    def _backspace(self, entry):
-        cont = entry.get()
-        entry.delete(0, tk.END)
-        entry.insert(0, cont[:-1])
+    def _backspace(self, part):
+        cont = part.get()
+        part.focus()
+        part.delete(0, tk.END)
+        part.insert(0, cont[:-1])
+
+    def _release(self, event):
+#        print('======== PRESS =========')
+        print('======= RELEASE ========')
+        event.widget.config(state='normal')
+        ww = event.widget
+        part = self.__day_part_detect(ww)
+        if len(ww.get()) >= event.widget['width']:
+            ww.selection_range(0, 'end')
+            part[1].focus()
+            if len(part[1].get()) == part[1]['width']:
+                part[1].selection_range(0, 'end')
 
     def _press(self, event):
+        print('======== PRESS =========')
+#        print('======= RELEASE ========')
         event.widget.config(state='readonly')
+        ww = event.widget
         char = event.char
-        keysum = event.keysym
-        keycode = event.keycode
-        type = event.type
-        print(event.widget['width'])
-        print('PRESS {}, KeySum: {}, KeyCode: {}, Event type: {}'.format(char, keysum, keycode, type))
-        if event.keysym == 'BackSpace':
-            print('Backspace pressed')
+        key = event.keysym
+        v = ww.get()
+        part = self.__day_part_detect(ww)
+        cursor_position = ww.index('insert')
+        print('Position {}, KeySum: {}'.format(cursor_position, key))
+
+        selected = ww.selection_present()
+
+        if key in ('BackSpace', 'Delete'):
+            if len(v) == 0 and part[0]:     # Если ячейка пустая и есть слева ячейка
+                self._backspace(part[0])
+        elif len(v) <= event.widget['width']:
+            if part[1]:
+                ww.config(state='normal')
+                part[1].focus()
+            elif selected:
+                ww.selection_clear()    # Clears the selection.
         elif char.isdigit():
-            self.ttt.set(char)
             pass
 
-
-    def _release(self, event, date_part=None):
-        entry = event.widget
-        print('date part', date_part)
-        size = entry['width']
-        entry.config(state='normal')
-        data = entry.get()
-        print('DATA', data)
-        print('kesy', event.keysym)
-        if data.isdigit():
-            event.widget.config(state='normal')
-        elif entry['width'] > 3:
-            next_entry = self.winfo_name()
-            print(next_entry)
-            if len(data) > size > len(next_entry.get()):
-                cont = entry.get()
-                entry.delete(size, tk.END)
-                to_next = cont[size:]
-                next_entry.insert(0, to_next)
-                print('DATA:', cont, '. Leave:', cont[:size], '. To next:', to_next)
-                print('FACT:', cont, '. Leave:', entry.get(), '. To next:', next_entry.get())
-                next_entry.focus()
-            elif len(data) == size and next_entry:
-                next_entry.focus()
-        elif len(data) > size:
-            self._backspace(entry)
-
-    def _check2(self, index):
-        entry = self.entries[index]
-        bef_index = index - 1
-        if not len(entry.get()) > 0 or bef_index < 0:
-            bef_entry = self.entries[bef_index]
-            if len(bef_entry.get()) > 1:
-                self._backspace(bef_entry)
-            bef_entry.focus()
-
-    def get(self):
-        return [e.get() for e in self.entries]
+    def __day_part_detect(self, widget):    # Возвращает право и лево от текущей ячейки
+        before = False
+        nxt = False
+        if widget == self.day:
+            nxt = self.month
+        elif widget == self.month:
+            before = self.day
+            nxt = self.year
+        elif widget == self.year:
+            before = self.month
+        return [before, nxt]
 
 
 if __name__ == '__main__':
