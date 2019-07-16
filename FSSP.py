@@ -283,7 +283,7 @@ def sql_req(date='xx', znak='eq'):
         select += "= " if znak == 'eq' else ">= "
         select += "CURRENT_DATE " if date == 'xx' else "'" + date + "' "
         select += "ORDER BY v.creation_date desc"
-        to_log('SQL request conditions: ' + select[-64:].upper().replace('ORDER BY V.CREATION_DATE DESC', ''))
+        to_log('SQL request condition: ' + select[632:-29].upper())
         cur.execute(select)
         rows = cur.fetchall()  # Return
         to_log('SQL request return ' + str(cur.rowcount) + ' rows')
@@ -298,7 +298,7 @@ def sql_req(date='xx', znak='eq'):
 
 # Запрос по TASK_UUID - получить результат\статус
 def get_uuid_req(task_uuid, status='result'):
-    status_arr = ['Success', 'Error1', 'Error2', 'Error3', 'Error4']
+    status_arr = ['Success', 'Error1', 'Not started', 'Error3', 'Error4']
     if task_uuid:
         url = BASE_URL + RESULT_URL if status == 'result' else BASE_URL + STATUS_URL
         params = {"token": TOKEN, "task": task_uuid}

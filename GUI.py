@@ -128,6 +128,9 @@ class DB:
         self.c.execute(
             '''CREATE TABLE IF NOT EXISTS finance (id integer primary key, description text, costs text, total real)''')
         self.conn.commit()
+        self.c.execute('''SELECT * FROM sqlite_master''')       # like .schema
+        self.conn.commit()
+        print(self.c.fetchall())
 
     def insert_data(self, description, cost, total):
         self.c.execute('''INSERT INTO finance(description, costs, total) VALUES (?, ?, ?)''',
