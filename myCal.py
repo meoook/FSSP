@@ -252,7 +252,7 @@ if __name__ == '__main__':
     app.not_current_is_nav = True
     app.date = '11.0x2.1115'
     app.date = 123
-    app.date = '11.02.1115'
+    app.date = '11.02.11215'
     root.mainloop()
 
 

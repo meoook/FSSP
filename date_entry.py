@@ -26,49 +26,58 @@ class DateEntry(tk.Frame):
         self.year.bind('<KeyPress>', self._press)
         self.year.bind('<KeyRelease>', self._release)
 
-    def _backspace(self, part):
+    @staticmethod
+    def __backspace(part):
         cont = part.get()
-        part.focus()
         part.delete(0, tk.END)
-        part.insert(0, cont[:-1])
-
-    def _release(self, event):
-#        print('======== PRESS =========')
-        print('======= RELEASE ========')
-        event.widget.config(state='normal')
-        ww = event.widget
-        part = self.__day_part_detect(ww)
-        if len(ww.get()) >= event.widget['width']:
-            ww.selection_range(0, 'end')
-            part[1].focus()
-            if len(part[1].get()) == part[1]['width']:
-                part[1].selection_range(0, 'end')
+        print('to del', cont[:part['width']-1])
+        part.insert(0, str(cont[:part['width']-1]))
+        print(part.get())
 
     def _press(self, event):
+        #print('======= RELEASE ========')
         print('======== PRESS =========')
-#        print('======= RELEASE ========')
-        event.widget.config(state='readonly')
         ww = event.widget
-        char = event.char
+        ww.config(state='readonly')
         key = event.keysym
         v = ww.get()
         part = self.__day_part_detect(ww)
         cursor_position = ww.index('insert')
-        print('Position {}, KeySum: {}'.format(cursor_position, key))
-
         selected = ww.selection_present()
+        print('whoo?', ww['state'])
 
-        if key in ('BackSpace', 'Delete'):
-            if len(v) == 0 and part[0]:     # Если ячейка пустая и есть слева ячейка
-                self._backspace(part[0])
-        elif len(v) <= event.widget['width']:
-            if part[1]:
+        print('Position {}, KeySum: {}, Selected: {}'.format(cursor_position, key, selected))
+        print('key type:', type(key))
+        if key == 'BackSpace':        # , 'Delete'
+            print('BackSpace')
+            ww.config(state='normal')
+            if cursor_position == 0:
+                if part[0]:
+                    part[0].focus()
+                    self.__backspace(part[0])
+            else:
+                self.__backspace(ww)
+        elif key.isdigit():
+            print('len', len(v), 'width', ww['width'])
+            if selected:
+                print('clear')
+                #ww.selection_clear()  # Clears the selection.
+                ww.config(state='normal')
+            elif (len(v) + 1 >= ww['width'] or ww['width'] == 0) and part[1]:
                 ww.config(state='normal')
                 part[1].focus()
-            elif selected:
-                ww.selection_clear()    # Clears the selection.
-        elif char.isdigit():
-            pass
+                if len(part[1].get()) == part[1]['width']:
+                    part[1].selection_range(0, 'end')
+            else:
+                ww.config(state='normal')
+        else:
+            print('OKOK')
+        print('why', ww.get())
+
+    def _release(self, event):
+        print('======= RELEASE ========')
+        #print('======== PRESS =========')
+        event.widget.config(state='normal')
 
     def __day_part_detect(self, widget):    # Возвращает право и лево от текущей ячейки
         before = False
