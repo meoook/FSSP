@@ -26,16 +26,28 @@ class DateEntry(tk.Frame):
         self.year.bind('<KeyPress>', self._press)
         self.year.bind('<KeyRelease>', self._release)
 
+        self.day.focus()
+
     @staticmethod
     def __backspace(part):
-        cont = part.get()
-        part.delete(0, tk.END)
-        print('to del', cont[:part['width']-1])
-        part.insert(0, str(cont[:part['width']-1]))
-        print(part.get())
+        cur = part.index('insert')
+        print('backspace', part.get()[cur-1:cur])
+        part.delete(cur-1, cur)
+
+    @staticmethod
+    def __delete(part):
+        cur = part.index('insert')
+        print('delete', part.get()[cur:cur-1])
+        part.delete(cur, cur-1)
+
+    @staticmethod
+    def __replace(part, key):
+        cur = part.index('insert')
+        print('replace', part.get()[cur:cur+1])
+        part.delete(cur, cur+1)
+        part.insert(cur, key)
 
     def _press(self, event):
-        #print('======= RELEASE ========')
         print('======== PRESS =========')
         ww = event.widget
         ww.config(state='readonly')
@@ -44,40 +56,76 @@ class DateEntry(tk.Frame):
         part = self.__day_part_detect(ww)
         cursor_position = ww.index('insert')
         selected = ww.selection_present()
-        print('whoo?', ww['state'])
 
-        print('Position {}, KeySum: {}, Selected: {}'.format(cursor_position, key, selected))
-        print('key type:', type(key))
+        print('Position {}, width {}, KeySum: {}, Selected: {}'.format(cursor_position, ww['width'], key, selected))
         if key == 'BackSpace':        # , 'Delete'
-            print('BackSpace')
-            ww.config(state='normal')
+            print('BACKSPACE')
             if cursor_position == 0:
                 if part[0]:
+                    print('JUMPING TO PREV')
                     part[0].focus()
                     self.__backspace(part[0])
             else:
-                self.__backspace(ww)
+                print('STATE NORMAL')
+                ww.config(state='normal')
+        elif key == 'Delete':
+            print('DELETE')
+            ww.config(state='normal')
+            if cursor_position >= ww['width']:
+                if part[1]:
+                    print('JUMPING TO NEXT')
+                    part[1].focus()
+                    self.__delete(part[1])
+            else:
+                print('STATE NORMAL')
+                ww.config(state='normal')
         elif key.isdigit():
-            print('len', len(v), 'width', ww['width'])
             if selected:
-                print('clear')
+                print('SELECTED')
                 #ww.selection_clear()  # Clears the selection.
                 ww.config(state='normal')
-            elif (len(v) + 1 >= ww['width'] or ww['width'] == 0) and part[1]:
+            elif len(v) >= ww['width']:
+                print('THE CELL IS FULL')
+                if cursor_position >= ww['width']:
+                    print('CURSOR AT THE END.')
+                    if part[1]:
+                        print('JUMPING TO NEXT')
+                        part[1].focus()
+                        print('HERE WE NEED TO INSERT NORM VALUE')
+                    else:
+                        print('NO NEXT CELL TO ADD. REPLACE LAST')
+                        #self.__backspace(ww)
+                        ww.delete(0, tk.END)
+                        #ww.insert(0, v[:-1] + key)
+                        #ww.config(state='normal')
+                else:
+                    print('JUST REPLACE VALUE')
+                    # ww.config(state='normal')
+                    self.__replace(ww, key)
+            elif len(v) + 1 >= ww['width']:
+                print('WILL BE FULL AFTER INSERT')
                 ww.config(state='normal')
-                part[1].focus()
-                if len(part[1].get()) == part[1]['width']:
-                    part[1].selection_range(0, 'end')
+                if part[1]:
+                    print('JUMPING TO NEXT')
+                    part[1].focus()
+                    if len(part[1].get()) == part[1]['width']:
+                        print('NEXT IS FULL. SELECTING')
+                        part[1].selection_range(0, 'end')
+                else:
+                    print('NO NEXT CELL TO JUMP')
             else:
+                print('THERE ARE ENOUGH FREE SELLS. INPUT HERE.')
                 ww.config(state='normal')
         else:
-            print('OKOK')
-        print('why', ww.get())
+            print('NOT A VALID INPUT')
 
     def _release(self, event):
         print('======= RELEASE ========')
-        #print('======== PRESS =========')
-        event.widget.config(state='normal')
+        self.day.config(state='normal')
+        self.month.config(state='normal')
+        self.year.config(state='normal')
+        print('Final: {}.{}.{}'.format(self.day.get(), self.month.get(), self.year.get()))
+
 
     def __day_part_detect(self, widget):    # Возвращает право и лево от текущей ячейки
         before = False
@@ -95,6 +143,7 @@ class DateEntry(tk.Frame):
 if __name__ == '__main__':
     win = tk.Tk()
     win.title('DateEntry demo')
+    win.geometry('+2700+300')
 
     dentry = DateEntry()
     dentry.pack()
