@@ -131,21 +131,7 @@ class DateEntry(tk.Frame):
         self.day.config(state='normal')
         self.month.config(state='normal')
         self.year.config(state='normal')
-        d, m, y = self.day.get(), self.month.get(), self.year.get()
-        #print('Final: {:02d}.{:02d}.{:04d}'.format(d, m, y))
-        if d.isdigit() and int(d) > 31:
-            self.day.config(bg='#F77')
-            self.day.delete(0, tk.END)
-            self.day.insert(0, '31')
-        else:
-            self.day.config(bg='white')
-        if m.isdigit() and int(m) > 12:
-            self.month.config(bg='#F77')
-            self.month.delete(0, tk.END)
-            self.month.insert(0, '12')
-        else:
-            self.month.config(bg='white')
-        #print('Final: {:02d}.{:02d}.{:04d}'.format(d, m, y))
+        print('Final: {}.{}.{}'.format(self.day.get(), self.month.get(), self.year.get()))
 
     def __day_part_detect(self, widget):    # Возвращает право и лево от текущей ячейки
         before = False
