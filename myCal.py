@@ -73,7 +73,7 @@ class DatePicker(tk.Label):   # Class polymorph from tk.Label
 
     @property
     def date(self):
-        return '{:02d}.{:02d}.{}'.format(*self.__sel)
+        return '{:02d}.{:02d}.{:04d}'.format(*self.__sel)
 
     @date.setter
     def date(self, value):
@@ -86,7 +86,7 @@ class DatePicker(tk.Label):   # Class polymorph from tk.Label
         except TypeError:
             print('\33[91mValue\33[93m', value, '\33[91merror. Must be a string type format:\33[93m dd.mm.yyyy\33[0m')
         else:
-            print('\33[94mChanging date to:\33[93m', self.date, '\33[0m')
+            print('\33[94mSelecting date:\33[93m', self.date, '\33[0m')
             self.__date_value.set(self.date)
         # self.__curr = self.__sel[1:3]     # Uncomment & del in PopUp to continue from month we stop, not today month
 
@@ -244,15 +244,15 @@ class DatePicker(tk.Label):   # Class polymorph from tk.Label
 
 if __name__ == '__main__':
     root = tk.Tk()
-    app = DatePicker(root, font=('Times', 34), cursor='hand2', relief='solid', bd=1)
+    app = DatePicker(root, font=('Times', 24), cursor='hand2', relief='solid', bd=1)
     root.geometry('500x500+500+300')
     app.pack(side='top')
     app.font_size = 'aa'
-    app.font_size = 34
+    app.font_size = 24
     app.not_current_is_nav = True
     app.date = '11.0x2.1115'
     app.date = 123
-    app.date = '11.02.11215'
+    app.date = '11.02.1215'
     root.mainloop()
 
 
