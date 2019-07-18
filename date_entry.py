@@ -38,17 +38,6 @@ class DateEntry(tk.Frame):
         print('delete', part.get()[cur:cur+1])
         part.delete(cur, cur+1)
 
-    @staticmethod
-    def __replace(part, key):
-        v = part.get()
-        cur = part.index('insert')
-        cur = cur - 1 if cur >= part['width'] else cur
-        print('replace in {} value {} on {}'.format(v, v[cur:cur+1], key))
-        part.delete(cur, cur+1)
-        print('1', part.get())
-        part.insert(cur, key)
-        print('2', part.get())
-
     def _press(self, event):
         print('======== PRESS =========')
         ww = event.widget
