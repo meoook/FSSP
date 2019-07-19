@@ -14,28 +14,26 @@ Posible UPDATES
 class DateEntry(tk.Label):      # tk.Frame as defaul but we need to translate Font
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.day = tk.Entry(self, width=2, **kwargs)
-        bg = self.day['bg']
-        self.day.config(readonlybackground=bg)
-        self.dot_dm = tk.Label(self, text='.', bg=bg, **kwargs)
-        self.month = tk.Entry(self, width=2, readonlybackground=bg, **kwargs)
-        self.dot_my = tk.Label(self, text='.', bg=bg, **kwargs)
-        self.year = tk.Entry(self, width=4, readonlybackground=bg, **kwargs)
+        self.__day = tk.Entry(self, width=2, **kwargs)
+        bg = self.__day['bg']
+        self.__day.config(readonlybackground=bg)
+        dot_dm = tk.Label(self, text='.', bg=bg, **kwargs)
+        self.__month = tk.Entry(self, width=2, readonlybackground=bg, **kwargs)
+        dot_my = tk.Label(self, text='.', bg=bg, **kwargs)
+        self.__year = tk.Entry(self, width=4, readonlybackground=bg, **kwargs)
 
-        self.day.pack(side=tk.LEFT)
-        self.dot_dm.pack(side=tk.LEFT)
-        self.month.pack(side=tk.LEFT)
-        self.dot_my.pack(side=tk.LEFT)
-        self.year.pack(side=tk.LEFT)
+        self.__day.pack(side=tk.LEFT)
+        dot_dm.pack(side=tk.LEFT)
+        self.__month.pack(side=tk.LEFT)
+        dot_my.pack(side=tk.LEFT)
+        self.__year.pack(side=tk.LEFT)
 
-        self.day.bind('<KeyPress>', self._press)
-        self.day.bind('<KeyRelease>', self._release)
-        self.month.bind('<KeyPress>', self._press)
-        self.month.bind('<KeyRelease>', self._release)
-        self.year.bind('<KeyPress>', self._press)
-        self.year.bind('<KeyRelease>', self._release)
-
-        self.day.focus()        # DELETE
+        self.__day.bind('<KeyPress>', self._press)
+        self.__day.bind('<KeyRelease>', self._release)
+        self.__month.bind('<KeyPress>', self._press)
+        self.__month.bind('<KeyRelease>', self._release)
+        self.__year.bind('<KeyPress>', self._press)
+        self.__year.bind('<KeyRelease>', self._release)
 
     @staticmethod
     def __backspace(part):
@@ -51,7 +49,7 @@ class DateEntry(tk.Label):      # tk.Frame as defaul but we need to translate Fo
 
     @property
     def date(self):
-        d, m, y = self.day.get(), self.month.get(), self.year.get()
+        d, m, y = self.__day.get(), self.__month.get(), self.__year.get()
         d = int(d) if d.isdigit() else 0
         m = int(m) if m.isdigit() else 0
         y = int(y) if y.isdigit() else 0
@@ -64,24 +62,24 @@ class DateEntry(tk.Label):      # tk.Frame as defaul but we need to translate Fo
         except Exception as e:
             print('Value not a date format dd.mm.yyyy Change it:', value, e)
         else:
-            self.day.delete(0, tk.END)
-            self.month.delete(0, tk.END)
-            self.year.delete(0, tk.END)
+            self.__day.delete(0, tk.END)
+            self.__month.delete(0, tk.END)
+            self.__year.delete(0, tk.END)
 
-            self.day.insert(0, d)
-            self.month.insert(0, m)
-            self.year.insert(0, y)
+            self.__day.insert(0, d)
+            self.__month.insert(0, m)
+            self.__year.insert(0, y)
 
     def __day_part_detect(self, widget):    # Возвращает право и лево от текущей ячейки
         before = False
         nxt = False
-        if widget == self.day:
-            nxt = self.month
-        elif widget == self.month:
-            before = self.day
-            nxt = self.year
-        elif widget == self.year:
-            before = self.month
+        if widget == self.__day:
+            nxt = self.__month
+        elif widget == self.__month:
+            before = self.__day
+            nxt = self.__year
+        elif widget == self.__year:
+            before = self.__month
         return [before, nxt]
 
     def _press(self, event):
@@ -149,31 +147,31 @@ class DateEntry(tk.Label):      # tk.Frame as defaul but we need to translate Fo
 
     def _release(self, event):          # THIS DEF NEEDS REMAKE
         print('======= RELEASE ========')
-        self.day.config(state='normal')
-        self.month.config(state='normal')
-        self.year.config(state='normal')
-        d, m, y = self.day.get(), self.month.get(), self.year.get()
+        self.__day.config(state='normal')
+        self.__month.config(state='normal')
+        self.__year.config(state='normal')
+        d, m, y = self.__day.get(), self.__month.get(), self.__year.get()
         d = int(d) if d.isdigit() else 0
         m = int(m) if m.isdigit() else 0
         y = int(y) if y.isdigit() else 0
         if 9 < d > 31:
-            self.day.config(bg='#F77')
-            self.day.delete(0, tk.END)
-            self.day.insert(0, '31')
+            self.__day.config(bg='#F77')
+            self.__day.delete(0, tk.END)
+            self.__day.insert(0, '31')
         else:
-            self.day.config(bg='white')
+            self.__day.config(bg='white')
         if 9 < m > 12:
-            self.month.config(bg='#F77')
-            self.month.delete(0, tk.END)
-            self.month.insert(0, '12')
+            self.__month.config(bg='#F77')
+            self.__month.delete(0, tk.END)
+            self.__month.insert(0, '12')
         else:
-            self.month.config(bg='white')
+            self.__month.config(bg='white')
         if y > 999 and (1900 > y or y > 2100):      # Пока не будет 4 знака (999)
-            self.year.config(bg='#F77')
-            self.year.delete(0, tk.END)
-            self.year.insert(0, '20' + str(y)[2:])
+            self.__year.config(bg='#F77')
+            self.__year.delete(0, tk.END)
+            self.__year.insert(0, '20' + str(y)[2:])
         else:
-            self.year.config(bg='white')
+            self.__year.config(bg='white')
         print('Final:', self.date)
 
 
@@ -186,5 +184,4 @@ if __name__ == '__main__':
     dentry = DateEntry(font=('Helvetica', 45, tk.NORMAL), border=0)
     dentry.pack()
     dentry.date = '10.10.2005'
-
     win.mainloop()

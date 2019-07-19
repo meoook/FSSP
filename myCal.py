@@ -1,15 +1,17 @@
 import calendar
 import tkinter as tk
 import time
+
 """
 Name: Calendar DatePicker
 Version: 1.01
 Author: meok
 Created: 14.07.2019
 Widget parameters:
-    date:         (dd.mm.yyyy) to set date
-    font_size:           (int) to change widget font size of PopUp window
-    not_current_is_nav: (bool) to navigate with other(not current) month days
+    date:          (dd.mm.yyyy) to set date
+    font_size:            (int) to change widget font size of PopUp window
+    not_current_is_nav:  (bool) to navigate with other(not current) month days
+    self.__root.date (parametr) from parent class to SET/GET date value
 Next version: Trying canvas for year transparent. Del LABEL_OPTIONS :)
 
 LABEL_OPTIONS = {'activebackground': 'SystemButtonFace',    # BG color when state = disabled
@@ -23,7 +25,7 @@ LABEL_OPTIONS = {'activebackground': 'SystemButtonFace',    # BG color when stat
                  'borderwidth': 1,                  # Border width (in pixels)
                  'bd': 1,                           # Same as borderwidth
                  'font': 'TkDefaultFont',           # Font (Name, size, bold, italic)
-                 'cursor': 'hand2',                 # Курсор hand1/hand2/arrow/...
+                 'cursor': 'hand2',                 # Курсор hand1/hand2/circle/clock/cross/dotbox/exchange/fleur/heart/man/mouse/pirate/plus/shuttle/sizing/spider/spraycan/star/target/tcross/trek/watch/
                  'relief': 'raised',                # raised/sunken ridge/groove flat/solid
                  'textvariable': '',                # Link text with this var !-> tk.StringVar()
                  'text': 'This is a Label',         # Text for the label (if textvariable not set)
@@ -44,7 +46,6 @@ LABEL_OPTIONS = {'activebackground': 'SystemButtonFace',    # BG color when stat
                  'takefocus': 0}
 """
 
-
 class DatePicker(tk.Label):   # Class polymorph from tk.Label
     # App Settings
     not_current_is_nav = True       # Даты не текущего месяца являются кнопками навигации
@@ -53,23 +54,41 @@ class DatePicker(tk.Label):   # Class polymorph from tk.Label
                      'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь')
     __week_names = ('Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс')
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.__root = self.winfo_toplevel()   # Root window
+    def __init__(self, master):
+        super().__init__(master)
+        self.__main = master
+        self.__root = self.__main.winfo_toplevel()   # Root window
         # self.__root.wm_attributes('-transparentcolor', self.__root['bg'])     # for transparent root (works bad)
         # String vars to change text values in widget !-> without маргание
         self.__day_vars = [tk.StringVar() for x in range(7*6) if x < 43]
         self.__curr_m_name = tk.StringVar()
         self.__curr_y_name = tk.StringVar()
-        self.__date_value = tk.StringVar()
-        # Init label
-        self.bind('<Button-1>', lambda event: self.__popup())
-        self.config(textvariable=self.__date_value)
+        # Bindings
+        self.__popup_closed = True
+        '''
+        self.__main.bind('<Button-1>', lambda event: self.__popup())
+        for child in self.__main.winfo_children():
+            child.bind('<Button-1>', lambda event: self.__popup())
+        '''
+        self.__binds_popup(True)
         # Today & Selected
         self.date = time.strftime("%d.%m.%Y", time.localtime())
         # Setting up font size
         self.font_size = 14
         self.__styles_setter()
+
+    def __binds_popup(self, state=False):
+        print('Changing styles. Popup:', self.__popup_closed, 'State:', state)
+        if self.__popup_closed:
+            self.__popup_closed = False
+            self.__main.bind('<Button-1>', lambda event: self.__popup())
+            for child in self.__main.winfo_children():
+                child.bind('<Button-1>', lambda event: self.__popup())
+        else:
+            self.__popup_closed = True
+            self.__main.bind('<Button-1>', lambda event: self.__binds_popup(True))
+            for child in self.__main.winfo_children():
+                child.bind('<Button-1>', lambda event: self.__binds_popup(True))
 
     @property
     def date(self):
@@ -77,7 +96,6 @@ class DatePicker(tk.Label):   # Class polymorph from tk.Label
 
     @date.setter
     def date(self, value):
-        # Today & Selected
         try:
             time.strptime(value, '%d.%m.%Y')
             self.__sel = [int(n) for n in value.split('.')]
@@ -87,7 +105,6 @@ class DatePicker(tk.Label):   # Class polymorph from tk.Label
             print('\33[91mValue\33[93m', value, '\33[91merror. Must be a string type format:\33[93m dd.mm.yyyy\33[0m')
         else:
             print('\33[94mSelecting date:\33[93m', self.date, '\33[0m')
-            self.__date_value.set(self.date)
         # self.__curr = self.__sel[1:3]     # Uncomment & del in PopUp to continue from month we stop, not today month
 
     @property
@@ -99,12 +116,12 @@ class DatePicker(tk.Label):   # Class polymorph from tk.Label
         # Font Settings. Times/Verdana/Lucida/Tempus Sans ITC/Console/Courier/Helvetica
         if isinstance(size, int):
             print('\33[94mChanging font size to:\33[93m', size, '\33[0m')
-            size = size if size <= 50 else 50  # Maximum font_size for CSS without errors.
+            size = size if size <= 50 else 50   # Maximum font_size for CSS without errors.
             self.__font_n = ('Console', size)   # Font nav = font cell, mb = font main
             self.__font_y = ('Console', int(size // 2.6))
             self.__font_c = ('Console', size)
             self.__font_w = ('Tempus Sans ITC', int(size // 1.6))
-            self.__styles_setter()            # Update styles after changing fonts
+            self.__styles_setter()              # Update styles after changing fonts
         else:
             print('\33[91mSize must be int value. Using defaults.\33[0m')
         print('\33[94mUsing fonts:\33[0m')
@@ -123,16 +140,20 @@ class DatePicker(tk.Label):   # Class polymorph from tk.Label
 
     def __popup(self):
         top = tk.Toplevel()
+        self.__binds_popup()
+        self.date = self.__main.date        # Integration with other classes
         self.__curr = self.__sel[1:3]       # Del & uncomment in date.setter to continue from month we stop
-        x = self.__root.winfo_x() + self.winfo_x() + 9       # Отступ главного окна + отступ внутри окна + погрешность
-        y = self.__root.winfo_y() + self.winfo_y() + self.winfo_height() + 30  # Тож самое + высота Label + TitleBar(30)
+        # Отступ от края экрана + отступ внутри приложения + погрешность
+        x = self.__root.winfo_x() + self.__main.winfo_x() + 9
+        # Отступ от края экрана + отступ внутри приложения + высота Label + TitleBar(30)
+        y = self.__root.winfo_y() + self.__main.winfo_y() + self.__main.winfo_height() + 30
         top.geometry('+{}+{}'.format(x, y))    # Смещение окна
         top.config(bd=0.4)                     # Граница вокруг календаря
         top.resizable(False, False)
         top.overrideredirect(1)                # Убрать TitleBar
         top.focus_force()                      # Делаем окно активным (для bind: <FocusOut>)
         # Binds
-        top.bind('<FocusOut>', lambda event: top.destroy())   # When PopUp lose focus
+        top.bind('<FocusOut>', self.__popup_close)   # When PopUp lose focus
         top.bind('<Button-1>', self.__check_this_button)      # What button we click
         # Building calendar
         self.__nav_build(top)
@@ -210,6 +231,10 @@ class DatePicker(tk.Label):   # Class polymorph from tk.Label
                 return True
         self.__matrix_change()
 
+    def __popup_close(self, event):
+        event.widget.destroy()
+        self.__popup_closed = True
+
     # Change current month, year
     def __curr_change(self, direction):
         if direction == '<<<':
@@ -219,8 +244,10 @@ class DatePicker(tk.Label):   # Class polymorph from tk.Label
 
     # Save and close
     def __date_selected(self):
+        self.__binds_popup(True)
         self.date = '.'.join(map(str, self.__sel))
-        self.__root.focus_force()     # When PopUp lose focus - it's close. See binds.
+        self.__main.focus_force()       # When PopUp lose focus - it's close. See binds.
+        self.__main.date = self.date    # Other class integration
 
     @staticmethod
     def __bind_hover(widget):
@@ -243,16 +270,21 @@ class DatePicker(tk.Label):   # Class polymorph from tk.Label
 
 
 if __name__ == '__main__':
+    from date_entry import DateEntry
+
+    # Курсор hand1/hand2/circle/clock/cross/dotbox/exchange/fleur/heart/man/mouse/pirate/plus/shuttle/sizing/spider/spraycan/star/target/tcross/trek/watch/
     root = tk.Tk()
-    app = DatePicker(root, font=('Times', 24), cursor='hand2', relief='solid', bd=1)
     root.geometry('500x500+500+300')
-    app.pack(side='top')
+    tt = DateEntry(root, font=('Times', 40), cursor='hand2', relief='solid', bd=0)
+    tt.pack(side='top')
+    app = DatePicker(tt)
     app.font_size = 'aa'
     app.font_size = 24
     app.not_current_is_nav = True
     app.date = '11.0x2.1115'
     app.date = 123
-    app.date = '11.02.1215'
+    app.date = '11.02.2215'
+    tt.date = app.date
     root.mainloop()
 
 
