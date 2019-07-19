@@ -14,12 +14,13 @@ Posible UPDATES
 class DateEntry(tk.Label):      # tk.Frame as defaul but we need to translate Font
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.ttt = tk.StringVar()
-        self.day = tk.Entry(self, width=2, font=('Helvetica', 40, tk.NORMAL), border=0)
-        self.dot_dm = tk.Label(self, text='.', font=('Helvetica', 40, tk.NORMAL), border=0, bg='white')
-        self.month = tk.Entry(self, width=2, font=('Helvetica', 40, tk.NORMAL), border=0)
-        self.dot_my = tk.Label(self, text='.', font=('Helvetica', 40, tk.NORMAL), border=0, bg='white')
-        self.year = tk.Entry(self, width=4, font=('Helvetica', 40, tk.NORMAL), border=0, textvariable=self.ttt)
+        self.day = tk.Entry(self, width=2, **kwargs)
+        bg = self.day['bg']
+        self.day.config(readonlybackground=bg)
+        self.dot_dm = tk.Label(self, text='.', bg=bg, **kwargs)
+        self.month = tk.Entry(self, width=2, readonlybackground=bg, **kwargs)
+        self.dot_my = tk.Label(self, text='.', bg=bg, **kwargs)
+        self.year = tk.Entry(self, width=4, readonlybackground=bg, **kwargs)
 
         self.day.pack(side=tk.LEFT)
         self.dot_dm.pack(side=tk.LEFT)
@@ -54,14 +55,14 @@ class DateEntry(tk.Label):      # tk.Frame as defaul but we need to translate Fo
         d = int(d) if d.isdigit() else 0
         m = int(m) if m.isdigit() else 0
         y = int(y) if y.isdigit() else 0
-        return '{:02d}.{:02d}.{:04d}'.format(d, m, y)
+        return '{:02d}.{:02d}.{}'.format(d, m, y)
 
     @date.setter
     def date(self, value):
         try:
             d, m, y = value.split('.')
-        except Exception:
-            print('Value not a date format dd.mm.yyyy Change it:', value)
+        except Exception as e:
+            print('Value not a date format dd.mm.yyyy Change it:', value, e)
         else:
             self.day.delete(0, tk.END)
             self.month.delete(0, tk.END)
@@ -71,17 +72,30 @@ class DateEntry(tk.Label):      # tk.Frame as defaul but we need to translate Fo
             self.month.insert(0, m)
             self.year.insert(0, y)
 
+    def __day_part_detect(self, widget):    # Возвращает право и лево от текущей ячейки
+        before = False
+        nxt = False
+        if widget == self.day:
+            nxt = self.month
+        elif widget == self.month:
+            before = self.day
+            nxt = self.year
+        elif widget == self.year:
+            before = self.month
+        return [before, nxt]
+
     def _press(self, event):
         print('======== PRESS =========')
-        ww = event.widget
-        ww.config(state='readonly')
-        key = event.keysym
-        v = ww.get()
-        part = self.__day_part_detect(ww)
-        cur_pos = ww.index('insert')
-        selected = ww.selection_present()
+        ww = event.widget                   # Current cell object
+        ww.config(state='readonly')         # Make cell readonly (no input allowed but visible cursor
+        key = event.keysym                  # Input key (what key was pressed)
+        v = ww.get()                        # Value inside the cell
+        wth = ww['width']                   # Maximum digits in the cell
+        part = self.__day_part_detect(ww)   # Objects: before and next cells or False
+        cur_pos = ww.index('insert')        # Cursor position
+        selected = ww.selection_present()   # If anything selected in the cell
 
-        print('Position {}, width {}, KeySum: {}, Selected: {}'.format(cur_pos, ww['width'], key, selected))
+        print('Position {}, width {}, KeySum: {}, Selected: {}'.format(cur_pos, wth, key, selected))
         if selected and key.isdigit():          # SELECTED
             ww.config(state='normal')
         elif key == 'BackSpace':                # BACKSPACE
@@ -92,7 +106,7 @@ class DateEntry(tk.Label):      # tk.Frame as defaul but we need to translate Fo
             else:                               # CAN BACKSPACE IN CURRENT CELL
                 ww.config(state='normal')
         elif key == 'Delete':                   # DELETE
-            if cur_pos >= ww['width']:
+            if cur_pos >= wth or (cur_pos == 0 and len(v) == 0):
                 if part[1]:                     # JUMPING TO NEXT
                     part[1].focus()
                     part[1].icursor(0)
@@ -100,23 +114,23 @@ class DateEntry(tk.Label):      # tk.Frame as defaul but we need to translate Fo
             else:                               # CAN DELETE IN CURRENT CELL
                 ww.config(state='normal')
         elif key.isdigit():                     # THE KEY IS DIGIT
-            if len(v) >= ww['width']:           # THE CELL IS FULL
-                if cur_pos >= ww['width']:      # CURSOR AT THE END.
+            if len(v) >= wth:                   # THE CELL IS FULL
+                if cur_pos >= wth:              # CURSOR AT THE END
                     if part[1]:                 # JUMPING TO NEXT
                         part[1].focus()
                         part[1].icursor(0)
-                        if len(part[1].get()) >= part[1]['width']:  # NEXT IS FULL. REPLACE BEGINNING
+                        if len(part[1].get()) >= part[1]['width']:  # NEXT IS FULL
                             self.__delete(part[1])
-                            part[1].insert(0, key)
-                        else:                   # FREE SPACE. INPUT HERE
+                            part[1].insert(0, key)      # REPLACE FIRST
+                        else:                   # ENOUGH FREE SPACE. INPUT HERE.
                             part[1].insert(0, key)
                     else:                       # NO NEXT CELL TO ADD. REPLACE LAST
                         ww.config(state='normal')
                         self.__backspace(ww)
-                else:                           # JUST REPLACE VALUE
+                else:                           # REPLACE VALUE
                     ww.config(state='normal')
                     self.__delete(ww)
-            elif len(v) + 1 >= ww['width']:     # WILL BE FULL AFTER INSERT
+            elif len(v) + 1 >= wth:             # WILL BE FULL AFTER INSERT
                 ww.config(state='normal')
                 if part[1]:                     # JUMPING TO NEXT
                     part[1].focus()
@@ -124,14 +138,12 @@ class DateEntry(tk.Label):      # tk.Frame as defaul but we need to translate Fo
                         part[1].selection_range(0, 'end')
             else:                               # THERE ARE ENOUGH FREE SELLS. INPUT HERE.
                 ww.config(state='normal')
-        elif key == 'Left' and cur_pos == 0 and part[0]:
+        elif key == 'Left' and cur_pos == 0 and part[0]:                                         # NAVIGATION <<<
             part[0].focus()
-        elif key == 'Right' and cur_pos >= ww['width'] and part[1]:
+        elif key == 'Right' and part[1] and (cur_pos >= wth or (cur_pos == 0 and len(v) == 0)):  # NAVIGATION >>>
             part[1].focus()
-        elif key in ('Alt_R', 'Alt_L', 'Control_L', 'Control_R'):
-            self.day.unbind_all()
-            self.month.unbind_all()
-            self.year.unbind_all()
+        elif key in ('Alt_R', 'Alt_L', 'Control_L', 'Control_R'):   # Need to turn off key combinations
+            pass
         else:
             print('NOT A VALID INPUT')
 
@@ -156,7 +168,7 @@ class DateEntry(tk.Label):      # tk.Frame as defaul but we need to translate Fo
             self.month.insert(0, '12')
         else:
             self.month.config(bg='white')
-        if y > 999 and (1900 > y or y > 2100):
+        if y > 999 and (1900 > y or y > 2100):      # Пока не будет 4 знака (999)
             self.year.config(bg='#F77')
             self.year.delete(0, tk.END)
             self.year.insert(0, '20' + str(y)[2:])
@@ -164,26 +176,15 @@ class DateEntry(tk.Label):      # tk.Frame as defaul but we need to translate Fo
             self.year.config(bg='white')
         print('Final:', self.date)
 
-    def __day_part_detect(self, widget):    # Возвращает право и лево от текущей ячейки
-        before = False
-        nxt = False
-        if widget == self.day:
-            nxt = self.month
-        elif widget == self.month:
-            before = self.day
-            nxt = self.year
-        elif widget == self.year:
-            before = self.month
-        return [before, nxt]
-
 
 if __name__ == '__main__':
     win = tk.Tk()
     win.title('DateEntry demo')
-    win.geometry('+2700+500')
+    #win.geometry('+2700+500')
+    win.geometry('+600+400')
 
-    dentry = DateEntry()
+    dentry = DateEntry(font=('Helvetica', 45, tk.NORMAL), border=0)
     dentry.pack()
+    dentry.date = '10.10.2005'
 
-#    win.bind('<Return>', lambda e: print(dentry.get()))
     win.mainloop()

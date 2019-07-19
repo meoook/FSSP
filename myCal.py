@@ -73,7 +73,7 @@ class DatePicker(tk.Label):   # Class polymorph from tk.Label
 
     @property
     def date(self):
-        return '{:02d}.{:02d}.{:04d}'.format(*self.__sel)
+        return '{:02d}.{:02d}.{}'.format(*self.__sel)   # Year no need to be format
 
     @date.setter
     def date(self, value):

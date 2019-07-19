@@ -1,158 +1,279 @@
+import calendar
 import tkinter as tk
+import time
+from date_entry import DateEntry
+"""
+Name: Calendar DatePicker
+Version: 1.01
+Author: meok
+Created: 14.07.2019
+Widget parameters:
+    date:         (dd.mm.yyyy) to set date
+    font_size:           (int) to change widget font size of PopUp window
+    not_current_is_nav: (bool) to navigate with other(not current) month days
+Next version: Trying canvas for year transparent. Del LABEL_OPTIONS :)
+
+LABEL_OPTIONS = {'activebackground': 'SystemButtonFace',    # BG color when state = disabled
+                 'activeforeground': 'SystemButtonText',    # Font color when state = disabled
+                 'anchor': 'center',                # n/ne/e/se/s/sw/w/nw/center
+                 'justify': 'center',               # Same as anchor ?
+                 'foreground': 'SystemButtonText',  # Text color
+                 'fg': 'SystemButtonText',          # Same as foreground
+                 'background': 'SystemButtonFace',  # BG color
+                 'bg': 'SystemButtonFace',          # Same as background
+                 'borderwidth': 1,                  # Border width (in pixels)
+                 'bd': 1,                           # Same as borderwidth
+                 'font': 'TkDefaultFont',           # Font (Name, size, bold, italic)
+                 'cursor': 'hand2',                 # Курсор hand1/hand2/arrow/...
+                 'relief': 'raised',                # raised/sunken ridge/groove flat/solid
+                 'textvariable': '',                # Link text with this var !-> tk.StringVar()
+                 'text': 'This is a Label',         # Text for the label (if textvariable not set)
+                 'image': '',                       # The image must be set: tk.PhotoImage(file='.\img\test.gif')
+                 'bitmap': '',
+                 'compound': 'none',                # Поведение с картинкой
+                 'disabledforeground': 'SystemDisabledText',    # Text color when state = disabled
+                 'highlightbackground': 'SystemButtonFace',     # Effects bg
+                 'highlightcolor': 'SystemWindowFrame',         # Effects color
+                 'highlightthickness': 2,           # Какой то отступ для эффектов (in pixels)
+                 'state': 'normal',                 # active/normal/disabled
+                 'underline': -1,                   # letter position (only 1 letter)
+                 'padx': 4,                         # In pixels
+                 'pady': 2,                         # In pixels
+                 'width': 25,                       # In chars
+                 'height': 4,                       # In chars
+                 'wraplength': 12,                  # Text maximum width in cell (in chars)
+                 'takefocus': 0}
+"""
 
 
-class DateEntry(tk.Frame):
-    def __init__(self):
-        super().__init__()
-        self.ttt = tk.StringVar()
-        self.day = tk.Entry(self, width=2, font=('Helvetica', 40, tk.NORMAL), border=0)
-        self.dot_dm = tk.Label(self, text='.', font=('Helvetica', 40, tk.NORMAL), border=0, bg='white')
-        self.month = tk.Entry(self, width=2, font=('Helvetica', 40, tk.NORMAL), border=0)
-        self.dot_my = tk.Label(self, text='.', font=('Helvetica', 40, tk.NORMAL), border=0, bg='white')
-        self.year = tk.Entry(self, width=4, font=('Helvetica', 40, tk.NORMAL), border=0, textvariable=self.ttt)
+class DatePicker(tk.Label):   # Class polymorph from tk.Label
+    # App Settings
+    not_current_is_nav = True       # Даты не текущего месяца являются кнопками навигации
+    # Locale Settings
+    __month_names = ('Zero Month Index', 'Январь', 'Февраль', 'Март', 'Апрель', 'Май',
+                     'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь')
+    __week_names = ('Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс')
 
-        self.day.pack(side=tk.LEFT)
-        self.dot_dm.pack(side=tk.LEFT)
-        self.month.pack(side=tk.LEFT)
-        self.dot_my.pack(side=tk.LEFT)
-        self.year.pack(side=tk.LEFT)
+    def __init__(self, master):
+        super().__init__(master)
+        self.__root = master
+        self.__main = self.__root.winfo_toplevel()   # Root window
+        # self.__root.wm_attributes('-transparentcolor', self.__root['bg'])     # for transparent root (works bad)
+        # String vars to change text values in widget !-> without маргание
+        self.__day_vars = [tk.StringVar() for x in range(7*6) if x < 43]
+        self.__curr_m_name = tk.StringVar()
+        self.__curr_y_name = tk.StringVar()
+        #self.__date_value = tk.StringVar()
+        # Init label
+        self.__root.bind('<Button-1>', lambda event: self.__popup())
+        #self.config(textvariable=self.__date_value)
+        # Today & Selected
+        self.date = time.strftime("%d.%m.%Y", time.localtime())
+        # Setting up font size
+        self.font_size = 14
+        self.__styles_setter()
 
-        self.day.bind('<KeyPress>', self._press)
-        self.day.bind('<KeyRelease>', self._release)
-        self.month.bind('<KeyPress>', self._press)
-        self.month.bind('<KeyRelease>', self._release)
-        self.year.bind('<KeyPress>', self._press)
-        self.year.bind('<KeyRelease>', self._release)
+        for child in self.__root.winfo_children():
+            child.bind('<Button-1>', lambda event: self.__popup())
 
-        self.day.focus()
+    @property
+    def date(self):
+        return '{:02d}.{:02d}.{}'.format(*self.__sel)   # Year no need to be format
 
-    @staticmethod
-    def __backspace(part):
-        cur = part.index('insert')
-        print('backspace', part.get()[cur-1:cur])
-        part.delete(cur-1, cur)
-
-    @staticmethod
-    def __delete(part):
-        cur = part.index('insert')
-        print('delete', part.get()[cur:cur+1])
-        part.delete(cur, cur+1)
-
-    @staticmethod
-    def __replace(part, key):
-        v = part.get()
-        cur = part.index('insert')
-        cur = cur - 1 if cur >= part['width'] else cur
-        print('replace in {} value {} on {}'.format(v, v[cur:cur+1], key))
-        part.delete(cur, cur+1)
-        print('1', part.get())
-        part.insert(cur, key)
-        print('2', part.get())
-
-    def _press(self, event):
-        print('======== PRESS =========')
-        ww = event.widget
-        ww.config(state='readonly')
-        key = event.keysym
-        v = ww.get()
-        part = self.__day_part_detect(ww)
-        cursor_position = ww.index('insert')
-        selected = ww.selection_present()
-
-        print('Position {}, width {}, KeySum: {}, Selected: {}'.format(cursor_position, ww['width'], key, selected))
-        if selected and key.isdigit():
-            print('SELECTED')
-            # ww.selection_clear()  # Clears the selection.
-            ww.config(state='normal')
-        elif key == 'BackSpace':        # , 'Delete'
-            print('BACKSPACE')
-            if cursor_position == 0:
-                if part[0]:
-                    print('JUMPING TO PREV')
-                    part[0].focus()
-                    self.__backspace(part[0])
-            else:
-                print('STATE NORMAL')
-                ww.config(state='normal')
-        elif key == 'Delete':
-            print('DELETE')
-            if cursor_position >= ww['width']:
-                if part[1]:
-                    print('JUMPING TO NEXT')
-                    part[1].focus()
-                    part[1].icursor(0)
-                    self.__delete(part[1])
-            else:
-                print('STATE NORMAL')
-                ww.config(state='normal')
-        elif key.isdigit():
-            print('THE KEY IS DIGIT')
-            if len(v) >= ww['width']:
-                print('THE CELL IS FULL')
-                if cursor_position >= ww['width']:
-                    print('CURSOR AT THE END.')
-                    if part[1]:
-                        print('JUMPING TO NEXT')
-                        part[1].focus()
-                        print('HERE WE NEED TO INSERT NORM VALUE')
-                    else:
-                        print('NO NEXT CELL TO ADD. REPLACE LAST')
-                        ww.config(state='normal')
-                        self.__backspace(ww)
-                        print('value', v)
-                else:
-                    print('JUST REPLACE VALUE')
-                    ww.config(state='normal')
-                    self.__delete(ww)
-                    print('value', v)
-            elif len(v) + 1 >= ww['width']:
-                print('WILL BE FULL AFTER INSERT')
-                ww.config(state='normal')
-                if part[1]:
-                    print('JUMPING TO NEXT')
-                    part[1].focus()
-                    if len(part[1].get()) == part[1]['width']:
-                        print('NEXT IS FULL. SELECTING')
-                        part[1].selection_range(0, 'end')
-                else:
-                    print('NO NEXT CELL TO JUMP')   # Here we can put CHECK_DATE
-            else:
-                print('THERE ARE ENOUGH FREE SELLS. INPUT HERE.')
-                ww.config(state='normal')
-        elif key == 'Left' and cursor_position == 0 and part[0]:
-            part[0].focus()
-        elif key == 'Right' and cursor_position >= ww['width'] and part[1]:
-            part[1].focus()
+    @date.setter
+    def date(self, value):
+        # Today & Selected
+        try:
+            time.strptime(value, '%d.%m.%Y')
+            self.__sel = [int(n) for n in value.split('.')]
+        except ValueError:
+            print('\33[91mValue\33[93m', value, '\33[91merror. Must be a date format:\33[93m dd.mm.yyyy\33[0m')
+        except TypeError:
+            print('\33[91mValue\33[93m', value, '\33[91merror. Must be a string type format:\33[93m dd.mm.yyyy\33[0m')
         else:
-            print('NOT A VALID INPUT')
+            print('\33[94mSelecting date:\33[93m', self.date, '\33[0m')
+        #    self.__date_value.set(self.date)
+        # self.__curr = self.__sel[1:3]     # Uncomment & del in PopUp to continue from month we stop, not today month
 
-    def _release(self, event):
-        print('======= RELEASE ========')
-        self.day.config(state='normal')
-        self.month.config(state='normal')
-        self.year.config(state='normal')
-        print('Final: {}.{}.{}'.format(self.day.get(), self.month.get(), self.year.get()))
+    @property
+    def font_size(self):
+        return {'main': self.__font_c, 'weeks': self.__font_w, 'year': self.__font_y, 'nav': self.__font_n}
 
-    def __day_part_detect(self, widget):    # Возвращает право и лево от текущей ячейки
-        before = False
-        nxt = False
-        if widget == self.day:
-            nxt = self.month
-        elif widget == self.month:
-            before = self.day
-            nxt = self.year
-        elif widget == self.year:
-            before = self.month
-        return [before, nxt]
+    @font_size.setter
+    def font_size(self, size):
+        # Font Settings. Times/Verdana/Lucida/Tempus Sans ITC/Console/Courier/Helvetica
+        if isinstance(size, int):
+            print('\33[94mChanging font size to:\33[93m', size, '\33[0m')
+            size = size if size <= 50 else 50  # Maximum font_size for CSS without errors.
+            self.__font_n = ('Console', size)   # Font nav = font cell, mb = font main
+            self.__font_y = ('Console', int(size // 2.6))
+            self.__font_c = ('Console', size)
+            self.__font_w = ('Tempus Sans ITC', int(size // 1.6))
+            self.__styles_setter()            # Update styles after changing fonts
+        else:
+            print('\33[91mSize must be int value. Using defaults.\33[0m')
+        print('\33[94mUsing fonts:\33[0m')
+        print('\33[93m{:5s} \33[92m{main}\33[93m\n{:5s} \33[92m{weeks}\33[93m\n{:5s} \33[92m{year}\33[93m\n{:5s} '
+              '\33[92m{nav}\33[0m'.format(*self.font_size, **self.font_size), '\33[0m')
+
+    def __styles_setter(self):
+        default = {'fg': '#111', 'bg': '#EEE', 'bd': 1, 'relief': 'raised',
+                       'activebackground': '#090', 'activeforeground': '#AFA',
+                       'highlightthickness': 0, 'highlightbackground': '#CCC'}  # this value used for mouse:hover state
+        self.__style_nav = {'font': self.__font_n, **default, 'pady': 5}
+        self.__style_year = {'font': self.__font_y, **default, 'relief': 'flat', 'fg': '#222'}
+        self.__style_week = {'font': self.__font_w, **default, 'width': 2}
+        self.__style_cell = {'font': self.__font_c, **default, 'width': 2, 'cursor': 'hand2'}
+        # More cell styles in get_cell_style function.
+
+    def __popup(self):
+        top = tk.Toplevel()
+        self.__curr = self.__sel[1:3]       # Del & uncomment in date.setter to continue from month we stop
+        x = self.__main.winfo_x() + self.__root.winfo_x() + 9       # Отступ главного окна + отступ внутри окна + погрешность
+        y = self.__main.winfo_y() + self.__root.winfo_y() + self.__root.winfo_height() + 30  # Тож самое + высота Label + TitleBar(30)
+        top.geometry('+{}+{}'.format(x, y))    # Смещение окна
+        top.config(bd=0.4)                     # Граница вокруг календаря
+        top.resizable(False, False)
+        top.overrideredirect(1)                # Убрать TitleBar
+        top.focus_force()                      # Делаем окно активным (для bind: <FocusOut>)
+        # Binds
+        top.bind('<FocusOut>', lambda event: top.destroy())   # When PopUp lose focus
+        top.bind('<Button-1>', self.__check_this_button)      # What button we click
+        # Building calendar
+        self.__nav_build(top)
+        self.__matrix_create_frames(top)
+        self.__matrix_change()
+
+    def __nav_build(self, top):
+        nav_frame = tk.Frame(top)
+        nav_frame.pack(side='top', fill=tk.X)  # raised/sunken ridge/groove flat/solid
+        btn_prev = tk.Label(nav_frame, self.__style_nav, text='<<<', width=4, cursor='hand2')
+        month_name = tk.Label(nav_frame, self.__style_nav, textvariable=self.__curr_m_name)
+        btn_next = tk.Label(nav_frame, self.__style_nav, text='>>>', width=4, cursor='hand2')
+        year_name = tk.Label(nav_frame, self.__style_year, textvariable=self.__curr_y_name)
+        self.__bind_hover(btn_prev)
+        self.__bind_hover(btn_next)
+        btn_prev.pack(side='left')
+        month_name.pack(side='left', fill='x', expand=True, pady=0)
+        btn_next.pack(side='left')
+        year_name.place(rely=0.01, relx=0.667, relheight=0.4, relwidth=0.09)
+
+    def __matrix_create_frames(self, top):
+        cal_fr = tk.Frame(top)
+        cal_fr.pack(side='top', fill='both')
+        # Week days (here for normal grid) ! Need styling for this
+        for i, week_day in enumerate(self.__week_names):
+            week = tk.Label(cal_fr, self.__style_week, text=week_day)
+            week.grid(row=0, column=i, ipadx=0, ipady=0, sticky='NSEW')
+        self.__cells = [tk.Label(cal_fr, self.__style_cell, textvariable=self.__day_vars[i]) for i in range(42)]
+
+    # Insert values in matrix
+    def __matrix_change(self):
+        self.__curr_m_name.set(self.__month_names[self.__curr[0]])
+        self.__curr_y_name.set(self.__curr[1])
+        cal_array = list(calendar.TextCalendar(firstweekday=0).itermonthdays4(self.__curr[1], self.__curr[0]))
+        row = 0
+        for i, day in enumerate(cal_array):
+            self.__day_vars[i].set(day[2])
+            holiday = True if day[3] in (5, 6) else False
+            # Direction: дни с прошлого\текущего\следующего месяца
+            what_month = 'current'
+            if i < 7 and day[2] > 20:
+                what_month = '<<<'
+            elif i > 20 and day[2] < 7:
+                what_month = '>>>'
+            # Set Label style
+            state = 'active' if self.__sel == [day[2], day[1], day[0]] else 'normal'
+            cell, style = self.__cells[i], self.__get_cell_style(holiday, what_month)
+            cell.config(style, state=state)
+            row = row + 1 if day[3] == 0 else row
+            cell.grid(row=row, column=day[3], ipadx=4, ipady=0)
+            cell.what_m = what_month
+            self.__bind_hover(cell)
+        for i in range(len(cal_array), 42):
+            self.__cells[i].grid_forget()   # Hide other cells
+
+    # Check click on PopUp !-> curr_change or date_selected
+    def __check_this_button(self, event):
+        ww = event.widget
+        if 'label' not in str(ww):  # or ww.winfo_name()
+            print('\33[91mGRID Error. Clicked not on {} widget\33[0m'.format(ww))   # To log
+            return False
+        try:    # Этот параметр есть только у дней календаря
+            ww.what_m
+        except Exception as e:
+            if ww['text'] in ('<<<', '>>>'):
+                self.__curr_change(ww['text'])
+            else:
+                print('\33[94mYou press', ww, e, '\33[0m')       # To log
+                return False
+        if isinstance(ww['text'], int) and ww['text'] < 32:
+            self.__curr_change(ww.what_m)
+            if not self.not_current_is_nav or ww.what_m == 'current':
+                self.__sel = [ww['text'], self.__curr[0], self.__curr[1]]
+                self.__date_selected()
+                return True
+        self.__matrix_change()
+
+    # Change current month, year
+    def __curr_change(self, direction):
+        if direction == '<<<':
+            self.__curr = [12, self.__curr[1]-1] if self.__curr[0] == 1 else [self.__curr[0]-1, self.__curr[1]]
+        elif direction == '>>>':
+            self.__curr = [1, self.__curr[1]+1] if self.__curr[0] == 12 else [self.__curr[0]+1, self.__curr[1]]
+
+    # Save and close
+    def __date_selected(self):
+        self.date = '.'.join(map(str, self.__sel))
+        self.__root.focus_force()     # When PopUp lose focus - it's close. See binds.
+        try:
+            set_date(self.date)
+        except Exception:
+            pass
+
+    @staticmethod
+    def __bind_hover(widget):
+        enter_color = widget['highlightbackground']
+        leave_color = widget['background']
+        widget.bind('<Enter>', lambda event, bg=enter_color: widget.config(background=bg))
+        widget.bind('<Leave>', lambda event, bg=leave_color: widget.config(background=bg))
+
+    @staticmethod
+    def __get_cell_style(holiday=False, month_sel='current'):
+        style = {'fg': '#111'}
+        if month_sel == 'current':
+            style['background'] = '#999' if holiday else '#CCC'     # Этот месяц: выходной\будень
+            style['highlightbackground'] = '#666' if holiday else '#888'
+        else:
+            style['background'] = '#595959' if holiday else '#757575'     # Другой месяц: выходной\будень
+            style['highlightbackground'] = '#555' if holiday else '#555'
+            style['fg'] = '#DDD'
+        return style
+
+
+def set_date(date):
+    tt.date = date
+
+
+def set_app(date):
+    app.date = date
 
 
 if __name__ == '__main__':
-    win = tk.Tk()
-    win.title('DateEntry demo')
-    win.geometry('+500+300')
+    root = tk.Tk()
+    root.geometry('500x500+500+300')
+    tt = DateEntry(root, font=('Times', 40), cursor='hand2', relief='solid', bd=1)
+    tt.pack(side='top')
+    app = DatePicker(tt)
+    root.bind('<Button-1>', lambda e: set_app(tt.date))
+    root.bind('<Key>', lambda e: set_app(tt.date))
+    app.font_size = 'aa'
+    app.font_size = 24
+    app.not_current_is_nav = True
+    app.date = '11.0x2.1115'
+    app.date = 123
+    app.date = '11.02.1215'
+    tt.date = app.date
+    root.mainloop()
 
-    dentry = DateEntry()
-    dentry.pack()
 
-#    win.bind('<Return>', lambda e: print(dentry.get()))
-    win.mainloop()
