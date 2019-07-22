@@ -7,6 +7,7 @@ import os
 import tkinter as tk
 from tkinter import ttk
 from myCal import DateEntry, CalPopup
+from fssp import FSSP
 
 '''
 COLORS
@@ -56,7 +57,7 @@ class DataBase:
 
 
 # Основной класс программы
-class Gui(tk.Tk):
+class App(tk.Tk):
     def __init__(self, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
         # Отобразить встроенные стили
@@ -78,7 +79,7 @@ class Gui(tk.Tk):
         self.log_window()
         # Создаем верхний фрейм, куда будем пихать другие страницы\фреймы
         container = tk.Frame(self)
-        container.pack(side='top', fill='both', expand=True)
+        container.pack(side='top', fill='both', expand=True, padx=2, pady=1)
         # Загружаем фреймы
         self.frames = {}
         for F in (MainPage, SettingsPage):    # Список всех фреймов
@@ -88,6 +89,8 @@ class Gui(tk.Tk):
         # Подключаемся к ДБ
         self.db = DataBase({'host': self.cfg['POSTGRES']['HOST'], 'dbname': self.cfg['POSTGRES']['DBNAME'],
                             'user': self.cfg['POSTGRES']['USER'], 'pwd': self.cfg['POSTGRES']['PWD']})
+        # Вызов класса ФССП
+        self.fssp = FSSP(self.cfg['FSSP.RU']['TOKEN'], self.cfg['FSSP.RU']['PAUSE'], self.cfg['FSSP.RU']['URL'])
         # При запуске показываем заглавную страницу
         self.show_frame(MainPage)
 
@@ -126,12 +129,14 @@ class Gui(tk.Tk):
     def tool_bar(self):
         # Отдельный фрейм для ToolBar
         toolbar = tk.Frame(self)
-        toolbar.pack(side='top', fill=tk.X)
+        toolbar.pack(side='top', fill=tk.X, padx=2)
+        self.bind('<ButtonRelease>', lambda e: self.change_number_name())     # Or check gui funct
 
         font = ('helvetica', 27)     # "Arial 24"
-        self.settings = tk.PhotoImage(file='.\\img\\setting4.png').subsample(6)
-        self.play = tk.PhotoImage(file='.\\img\\play.png')
-        btn1 = tk.Button(toolbar, command=lambda: self.show_frame(SettingsPage), image=self.settings, bg='#393')
+        self.settings_ico = tk.PhotoImage(file='.\\img\\setting4.png').subsample(6)
+        self.sql_ico = tk.PhotoImage(file='.\\img\\sql2.png').subsample(15)
+        self.fssp_ico = tk.PhotoImage(file='.\\img\\fssp.png').subsample(8)
+        btn1 = tk.Button(toolbar, command=lambda: self.show_frame(SettingsPage), image=self.settings_ico, bg='#393')
         btn1.pack(side='left', fill='both')
 
         select_label = tk.Label(toolbar, font=font, text='Найти нарушителей', bg='#beb', fg='#393')
@@ -145,31 +150,29 @@ class Gui(tk.Tk):
                foreground=[('pressed', 'red'), ('active', 'green')],
                background=[('pressed', '!disabled', 'black'), ('active', 'white')],
                relief=[('pressed', '!disabled', 'sunken')])
-        st.theme_settings("vista", {
-            "TCombobox": {"configure": {"padding": 0},
-                        "map": {"background": [("active", "green2"), ("!disabled", "green4"), ("selected", "black")],
-                                "fieldbackground": [("!disabled", "green3")],
-                                "foreground": [("focus", "OliveDrab1"), ("!disabled", "black")],
-                                "activeforeground": [('selected', 'black')],
-                                "relief": [('pressed', '!disabled', 'sunken')]}
-                        }})
         # END STYLE
+        self.select_znak = TkCombo(toolbar, 'За', 'С',  font=font, width=3, bg='#beb', fg='#393')
 
-        self.select_znak = ttk.Combobox(toolbar, values=[u'За', u'С'], width=3)
-        self.select_znak.config(font=font)
-        self.select_znak.current(0)
-        self.select_znak.pack(side='left')
-
-        self.select_date = DateEntry(toolbar, font=font, relief='solid', bd=0, bg='#beb', fg='#393')
+        self.select_date = DateEntry(toolbar, font=font,  bd=0, bg='#beb', fg='#393')
+        self.select_date.config(relief='groove', bd=2)
         self.select_date.pack(side='left', fill='both')
         CalPopup(self.select_date)
         self.select_date.date = '24.05.2019'
 
-        select_label2 = tk.Label(toolbar, font=font, text='число', bg='#beb', fg='#393')
-        select_label2.pack(side='left', fill='both')
+        self.__number_name = tk.StringVar()
+        number_name = tk.Label(toolbar, font=font, textvariable=self.__number_name, bg='#beb', fg='#393')
+        number_name.pack(side='left', fill='both')
+        self.change_number_name()
 
-        btn2 = ttk.Button(toolbar, command=lambda: self.get_req_data(), image=self.play)
-        btn2.pack(side='left', fill='both')
+        btn2 = tk.Button(toolbar, command=self.get_req_data, image=self.sql_ico, bg='#393')
+        btn2.pack(side='left', fill='both', ipadx=4)
+
+        btn3 = tk.Button(toolbar, command=lambda: self.get_fssp_data(), image=self.fssp_ico, bg='#393')
+        btn3.pack(side='left', fill='both', ipadx=4)
+
+    def change_number_name(self):
+        name = 'число' if self.select_znak.value == 'За' else 'числа'
+        self.__number_name.set(name)
 
     # Табло для отображения логов
     def log_window(self):
@@ -189,13 +192,18 @@ class Gui(tk.Tk):
 
     # Собираем данные для request -> fssp.ru
     def get_req_data(self):
-        znak = None if self.select_znak.get() == 'За' else 'X'
+        znak = None if self.select_znak.value == 'За' else 'X'
         date = self.select_date.date
-        date = None if len(date) < 9 else date  # '24.05.2019'
+        date = None if len(date) < 9 else date
         arr = self.db.select_sql(date, znak)
         frame = self.frames[MainPage]
         frame.view_records(arr)
         frame.tkraise()
+
+    def get_fssp_data(self):
+        self.fssp.arr = self.frames[MainPage].req_array()
+        if self.fssp.arr:
+            self.frames[MainPage].insert_sum(self.fssp.arr)
 
     # CONFIG
     def get_config(self):
@@ -222,11 +230,7 @@ class Gui(tk.Tk):
         self.cfg.add_section('FSSP.RU')     # FSSP CONFIG
         self.cfg.set('FSSP.RU', 'PAUSE', config.get('FSSP.RU', 'PAUSE', fallback='15'))
         self.cfg.set('FSSP.RU', 'TOKEN', config.get('FSSP.RU', 'TOKEN', fallback='k51UxJdRmtyZ'))
-        self.cfg.set('FSSP.RU', 'BASE_URL', config.get('FSSP.RU', 'BASE_URL',
-                                                       fallback='https://api-ip.fssprus.ru/api/v1.0/'))
-        self.cfg.set('FSSP.RU', 'GROUP_URL', config.get('FSSP.RU', 'GROUP_URL', fallback='search/group'))
-        self.cfg.set('FSSP.RU', 'STATUS_URL', config.get('FSSP.RU', 'STATUS_URL', fallback='status'))
-        self.cfg.set('FSSP.RU', 'RESULT_URL', config.get('FSSP.RU', 'RESULT_URL', fallback='result'))
+        self.cfg.set('FSSP.RU', 'URL', config.get('FSSP.RU', 'URL', fallback='https://api-ip.fssprus.ru/api/v1.0/'))
         self.cfg.add_section('LOGS')      # LOG CONFIG
         self.cfg.set('LOGS', 'SAVE_TO_FILE', config.get('LOGS', 'SAVE_TO_FILE', fallback='True'))
         self.cfg.set('LOGS', 'LOG_LVL', config.get('LOGS', 'LOG_LVL', fallback='3'))
@@ -240,18 +244,14 @@ class Gui(tk.Tk):
             self.cfg.write(cfg_file)
 
 
-# Фрейм главной страницы
 class MainPage(tk.Frame):
+    # Фрейм главной страницы
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
         self.tree = ttk.Treeview(self, height=10, show='headings', padding=0, selectmode='browse',
                              column=('F', 'I', 'O', 'dr', 'dt', 'adr', 'court', 'rst', 'csum', 'comm', 'jail', 'sum'),
                              displaycolumns=('dt', 'adr', 'court', 'rst', 'csum', 'comm', 'jail', 'sum'))
-        self.show_tree()
-
-    # Таблица для вывода результатов
-    def show_tree(self):
-
+        # Таблица для вывода результатов
         self.tree.column('dt', width=110, anchor=tk.CENTER)
         self.tree.column('adr', width=250, anchor=tk.W)
         self.tree.column('court', width=55, anchor=tk.CENTER)
@@ -270,38 +270,109 @@ class MainPage(tk.Frame):
         self.tree.heading('jail', text='Задержаний')
         self.tree.heading('sum', text='Сумма взысканий')
 
-        self.tree.pack(side='top')
+        self.tree.pack(side='top', fill='both')
 
     def view_records(self, arr=()):
-        print('Refresh Tree view', arr)
         [self.tree.delete(i) for i in self.tree.get_children()]
         [self.tree.insert('', 'end', values=row) for row in arr]
+
+    def req_array(self):
+        arr = []
+        for row_id in self.tree.get_children():
+            row = self.tree.set(row_id)
+            add = [row['F'], row['I'], row['O'], row['dr']]
+            arr.append(add)
+        return arr
+
+    def insert_sum(self, sum_array):
+        for row_id in self.tree.get_children():
+            row = self.tree.set(row_id)
+            for res in sum_array:
+                if res[0] == 1:  # Берем только физиков
+                    if 'sum' not in row.keys():
+                        if res[1:5] == [row['F'], row['I'], row['O'], row['dr']]:
+                            self.tree.set(row_id, 'sum', res[5])
 
 
 # Фрейм для страницы настроек
 class SettingsPage(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
+        self.config(bd=2, relief='groove')
+        main_options = tk.Frame(self, bd=2, relief='groove')
+        main_options.pack(side='left', fill='y', padx=5, pady=5)
 
-        main_options = tk.Frame(self)
-        main_options.pack(side='left')
+        tk.Label(main_options, text='Postgres Settings', anchor='w').grid(row=0, column=0, columnspan=2)
 
-        label1 = tk.Label(main_options, text='Second page')
-        label1.grid(row=0, column=0)
+        label1 = tk.Label(main_options, text=controller.cfg['POSTGRES']['HOST'])
+        label1.grid(row=1, column=0)
         button1 = ttk.Button(main_options, text='Second page', command=lambda: controller.show_frame(MainPage))
-        button1.grid(row=0, column=1)
+        button1.grid(row=2, column=1)
 
         label2 = tk.Label(main_options, text='Main page')
-        label2.grid(row=1, column=0)
+        label2.grid(row=2, column=0)
         button2 = ttk.Button(main_options, text='Main page', command=lambda: controller.show_frame(MainPage))
-        button2.grid(row=1, column=1)
+        button2.grid(row=2, column=1)
 
         label3 = tk.Label(main_options, text='Main page')
-        label3.grid(row=2, column=0)
+        label3.grid(row=3, column=0)
         button3 = ttk.Button(main_options, text='Main page', command=lambda: controller.show_frame(MainPage))
-        button3.grid(row=2, column=1)
+        button3.grid(row=3, column=1)
+
+
+class TkCombo(tk.Frame):
+    """ tk ComboBox remake
+        наследует фон
+        to set chosen value: self.value = 0
+    """
+    def __init__(self, master, *args, **kwargs):
+        super().__init__()
+        self.__current = tk.StringVar()
+        # Create main label
+        self.__main = tk.Label(master, textvariable=self.__current, **kwargs, bd=2, relief='groove', cursor='hand2')
+        self.__main.pack(side='left', fill='both')
+        self.__bind_hover(self.__main)
+        self.__values = args
+        self.value = 0
+        # Config main
+        self.__main.bind('<Button-1>', lambda event:  self.__popup_show(**kwargs))   # When PopUp lose focus
+
+    @property
+    def value(self):
+        return self.__main['text']
+
+    @value.setter
+    def value(self, index=0):
+        self.__current.set(self.__values[index])
+
+    def __popup_show(self, **kwargs):
+        top = tk.Toplevel()
+        top.resizable(False, False)
+        top.overrideredirect(1)                # Убрать TitleBar
+        x = self.__main.winfo_rootx()
+        y = self.__main.winfo_rooty() + self.__main.winfo_height()
+        top.geometry('+{}+{}'.format(x, y))    # Смещение окна
+        top.focus_force()  # Делаем окно активным (для bind: <FocusOut>)
+        # Create popup frame
+        top.bind('<FocusOut>', lambda event: top.destroy())   # When PopUp lose focus
+        for value in self.__values:
+            val = tk.Label(top, text=value, **kwargs, bd=2, relief='ridge', cursor='hand2')
+            val.pack(side='top', fill='both')
+            val.bind('<Button-1>', self.__select)
+            self.__bind_hover(val)
+
+    def __select(self, event):
+        self.__current.set(event.widget['text'])
+        self.__main.focus_force()
+
+    @staticmethod
+    def __bind_hover(widget):
+        enter_color = widget['highlightbackground']
+        leave_color = widget['background']
+        widget.bind('<Enter>', lambda event, bg=enter_color: widget.config(background=bg))
+        widget.bind('<Leave>', lambda event, bg=leave_color: widget.config(background=bg))
 
 
 if __name__ == '__main__':
-    app = Gui()
+    app = App()
     app.mainloop()

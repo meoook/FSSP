@@ -52,7 +52,7 @@ class Main(tk.Frame):
     def view_records(self):
         self.db.c.execute('''SELECT * FROM finance''')
         [self.tree.delete(i) for i in self.tree.get_children()]
-        [self.tree.insert('', 'end', values = row) for row in self.db.c.fetchall()]
+        [self.tree.insert('', 'end', values=row) for row in self.db.c.fetchall()]
         print(self.tree.get_children())
 
     def open_dialog(self):
