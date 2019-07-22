@@ -6,7 +6,7 @@ import psycopg2
 import os
 import tkinter as tk
 from tkinter import ttk
-from tkcalendar import DateEntry
+from myCal import DateEntry, CalPopup
 
 '''
 COLORS
@@ -66,6 +66,7 @@ class Gui(tk.Tk):
 
         # App window Settings
         self.title("Проверяльщик ФССП")                    # Название
+        self.geometry('+500+300')    # Смещение окна
         self.resizable(False, False)                       # Растягивается
         self.iconbitmap(self, default='.\\img\\ico.ico')   # Иконка приложения
         # Load Config
@@ -90,23 +91,6 @@ class Gui(tk.Tk):
         # При запуске показываем заглавную страницу
         self.show_frame(MainPage)
 
-    # === Experements ===========================
-
-        # self.bind('<Button-1>', lambda event: self.quit())
-        self.bind('<Button-1>', lambda e: self.infoo(e))  # LoL function
-        self.bind('<FocusOut>', lambda event, arg=self: self.destr(arg, event))  # LoL function
-
-    def destr(self, arg, event=None):
-        print('destroy', arg)
-        #arg.destroy()
-
-    def infoo(self, event=None):
-        print('widget:', event.widget, event.x, event.y)
-        print('focus:', self.focus_get())
-
-
-    # ===========================================
-
     # Главное меню (полоска)
     def menu_bar(self):
         menubar = tk.Menu(self)
@@ -116,6 +100,7 @@ class Gui(tk.Tk):
         file.add_command(label='Open')
         file.add_command(label='Save')
         file.add_command(label='Close')
+        file.add_command(label='Options', command=lambda: self.show_frame(SettingsPage))
         file.add_separator()
         file.add_command(label='Exit', command=self.quit)
         # Edit SubMenu
@@ -140,22 +125,17 @@ class Gui(tk.Tk):
     # Меню из иконок
     def tool_bar(self):
         # Отдельный фрейм для ToolBar
-        toolbar = ttk.Frame(self)
+        toolbar = tk.Frame(self)
         toolbar.pack(side='top', fill=tk.X)
 
         font = ('helvetica', 27)     # "Arial 24"
-        self.settings = tk.PhotoImage(file='.\\img\\settings.png')
+        self.settings = tk.PhotoImage(file='.\\img\\setting4.png').subsample(6)
         self.play = tk.PhotoImage(file='.\\img\\play.png')
-        btn1 = ttk.Button(toolbar, command=lambda: self.show_frame(SettingsPage), image=self.settings)
-        btn1.pack(side='left')
+        btn1 = tk.Button(toolbar, command=lambda: self.show_frame(SettingsPage), image=self.settings, bg='#393')
+        btn1.pack(side='left', fill='both')
 
-        self.sep = ttk.Separator(toolbar, orient="vertical", style="Line.TSeparator").pack(side="left", fill="y", padx=3, pady=5)  # vertical\horizontal
-
-        select_label = ttk.Label(toolbar, text='Найти нарушителей', relief=tk.RIDGE)
-        select_label.config(font=font)
-        select_label.pack(side='left')
-
-        ttk.Separator(toolbar, orient="vertical", style="Line.TSeparator").pack(side="left", fill="y", padx=3, pady=5)  # vertical\horizontal
+        select_label = tk.Label(toolbar, font=font, text='Найти нарушителей', bg='#beb', fg='#393')
+        select_label.pack(side='left', fill='both')
 
         # STYLE STYLE STYLE :)
         st = ttk.Style()
@@ -180,43 +160,16 @@ class Gui(tk.Tk):
         self.select_znak.current(0)
         self.select_znak.pack(side='left')
 
-        ttk.Separator(toolbar, orient="vertical", style="Line.TSeparator").pack(side="left", fill="y", padx=3, pady=5)  # vertical\horizontal
+        self.select_date = DateEntry(toolbar, font=font, relief='solid', bd=0, bg='#beb', fg='#393')
+        self.select_date.pack(side='left', fill='both')
+        CalPopup(self.select_date)
+        self.select_date.date = '24.05.2019'
 
-        self.select_date = DateEntry(toolbar, width=9,
-                                     borderwidth=1,
-                                     locale='ru_RU',
-                                     font=font,
-                                     background='#AAA',
-                                     foreground='#000',
-                                     bordercolor='#000',
-                                     selectbackground='#090',
-                                     selectforeground='#AFA',
-                                     normalbackground='#CCC',
-                                     normalforeground='#111',
-                                     othermonthbackground='#AAA',
-                                     othermonthforeground='#222',
-                                     othermonthwebackground='#666',
-                                     othermonthweforeground='#111',
-                                     weekendbackground='#888',
-                                     weekendforeground='#111',
-                                     headersbackground='#EEE',
-                                     headersforeground='#666',
-                                     style='C.TButton')
-        self.select_date.pack(side='left', ipadx=0, anchor=tk.CENTER)
-        # DEBUG
-        self.select_date.delete(0, tk.END)
-        self.select_date.insert(0, '24.05.2019')
-
-        ttk.Separator(toolbar, orient="vertical", style="Line.TSeparator").pack(side="left", fill="y", padx=3, pady=5)  # vertical\horizontal
-
-        select_label2 = ttk.Label(toolbar, text='число', relief=tk.RIDGE)
-        select_label2.config(font=font)
-        select_label2.pack(side='left')
-
-        ttk.Separator(toolbar, orient="vertical", style="Line.TSeparator").pack(side="left", fill="y", padx=3, pady=5)  # vertical\horizontal
+        select_label2 = tk.Label(toolbar, font=font, text='число', bg='#beb', fg='#393')
+        select_label2.pack(side='left', fill='both')
 
         btn2 = ttk.Button(toolbar, command=lambda: self.get_req_data(), image=self.play)
-        btn2.pack(side=tk.LEFT)
+        btn2.pack(side='left', fill='both')
 
     # Табло для отображения логов
     def log_window(self):
@@ -237,7 +190,7 @@ class Gui(tk.Tk):
     # Собираем данные для request -> fssp.ru
     def get_req_data(self):
         znak = None if self.select_znak.get() == 'За' else 'X'
-        date = self.select_date.get()
+        date = self.select_date.date
         date = None if len(date) < 9 else date  # '24.05.2019'
         arr = self.db.select_sql(date, znak)
         frame = self.frames[MainPage]
@@ -292,8 +245,8 @@ class MainPage(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
         self.tree = ttk.Treeview(self, height=10, show='headings', padding=0, selectmode='browse',
-                                 column=('n1', 'n2', 'd3', 'dr', 'dt', 'adr', 'court', 'rst', 'csum', 'comm', 'jail', 'sum'),
-                                 displaycolumns=('dt', 'adr', 'court', 'rst', 'csum', 'comm', 'jail', 'sum'))
+                             column=('F', 'I', 'O', 'dr', 'dt', 'adr', 'court', 'rst', 'csum', 'comm', 'jail', 'sum'),
+                             displaycolumns=('dt', 'adr', 'court', 'rst', 'csum', 'comm', 'jail', 'sum'))
         self.show_tree()
 
     # Таблица для вывода результатов
@@ -331,20 +284,22 @@ class SettingsPage(tk.Frame):
         tk.Frame.__init__(self, parent)
 
         main_options = tk.Frame(self)
-        main_options.pack(side='left', fill=tk.Y)
+        main_options.pack(side='left')
 
-        pg_options = tk.Frame(self)
-        pg_options.pack(side='left', fill=tk.Y)
+        label1 = tk.Label(main_options, text='Second page')
+        label1.grid(row=0, column=0)
+        button1 = ttk.Button(main_options, text='Second page', command=lambda: controller.show_frame(MainPage))
+        button1.grid(row=0, column=1)
 
-        label = tk.Label(main_options, text='Second page')
-        label.pack(side='top')
-        button = ttk.Button(main_options, text='Main page', command=lambda: controller.show_frame(MainPage))
-        button.pack(side='top')
+        label2 = tk.Label(main_options, text='Main page')
+        label2.grid(row=1, column=0)
+        button2 = ttk.Button(main_options, text='Main page', command=lambda: controller.show_frame(MainPage))
+        button2.grid(row=1, column=1)
 
-        label2 = tk.Label(pg_options, text='Second page')
-        label2.pack(side='left')
-        button2 = ttk.Button(pg_options, text='Main page', command=lambda: controller.show_frame(MainPage))
-        button2.pack(side='left')
+        label3 = tk.Label(main_options, text='Main page')
+        label3.grid(row=2, column=0)
+        button3 = ttk.Button(main_options, text='Main page', command=lambda: controller.show_frame(MainPage))
+        button3.grid(row=2, column=1)
 
 
 if __name__ == '__main__':

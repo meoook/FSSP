@@ -1,6 +1,7 @@
 import tkinter as tk
 
 '''
+Can be deleted
 Posible UPDATES
 
     monthlist1 = [1,3,5,7,8,10,12] ## monthlist for months with 31 days.
@@ -17,9 +18,9 @@ class DateEntry(tk.Label):      # tk.Frame as defaul but we need to translate Fo
         self.__day = tk.Entry(self, width=2, **kwargs)
         bg = self.__day['bg']
         self.__day.config(readonlybackground=bg)
-        dot_dm = tk.Label(self, text='.', bg=bg, **kwargs)
+        dot_dm = tk.Label(self, text='.', **kwargs)
         self.__month = tk.Entry(self, width=2, readonlybackground=bg, **kwargs)
-        dot_my = tk.Label(self, text='.', bg=bg, **kwargs)
+        dot_my = tk.Label(self, text='.', **kwargs)
         self.__year = tk.Entry(self, width=4, readonlybackground=bg, **kwargs)
 
         self.__day.pack(side=tk.LEFT)
@@ -38,13 +39,11 @@ class DateEntry(tk.Label):      # tk.Frame as defaul but we need to translate Fo
     @staticmethod
     def __backspace(part):
         cur = part.index('insert')
-        print('backspace', part.get()[cur-1:cur])
         part.delete(cur-1, cur)
 
     @staticmethod
     def __delete(part):
         cur = part.index('insert')
-        print('delete', part.get()[cur:cur+1])
         part.delete(cur, cur+1)
 
     @property
@@ -83,7 +82,6 @@ class DateEntry(tk.Label):      # tk.Frame as defaul but we need to translate Fo
         return [before, nxt]
 
     def _press(self, event):
-        print('======== PRESS =========')
         ww = event.widget                   # Current cell object
         ww.config(state='readonly')         # Make cell readonly (no input allowed but visible cursor
         key = event.keysym                  # Input key (what key was pressed)
@@ -93,7 +91,6 @@ class DateEntry(tk.Label):      # tk.Frame as defaul but we need to translate Fo
         cur_pos = ww.index('insert')        # Cursor position
         selected = ww.selection_present()   # If anything selected in the cell
 
-        print('Position {}, width {}, KeySum: {}, Selected: {}'.format(cur_pos, wth, key, selected))
         if selected and key.isdigit():          # SELECTED
             ww.config(state='normal')
         elif key == 'BackSpace':                # BACKSPACE
@@ -142,11 +139,8 @@ class DateEntry(tk.Label):      # tk.Frame as defaul but we need to translate Fo
             part[1].focus()
         elif key in ('Alt_R', 'Alt_L', 'Control_L', 'Control_R'):   # Need to turn off key combinations
             pass
-        else:
-            print('NOT A VALID INPUT')
 
     def _release(self, event):          # THIS DEF NEEDS REMAKE
-        print('======= RELEASE ========')
         self.__day.config(state='normal')
         self.__month.config(state='normal')
         self.__year.config(state='normal')
@@ -172,7 +166,6 @@ class DateEntry(tk.Label):      # tk.Frame as defaul but we need to translate Fo
             self.__year.insert(0, '20' + str(y)[2:])
         else:
             self.__year.config(bg='white')
-        print('Final:', self.date)
 
 
 if __name__ == '__main__':
