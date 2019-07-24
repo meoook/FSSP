@@ -27,7 +27,8 @@ LABEL_OPTIONS = {'activebackground': 'SystemButtonFace',    # BG color when stat
                  'borderwidth': 1,                  # Border width (in pixels)
                  'bd': 1,                           # Same as borderwidth
                  'font': 'TkDefaultFont',           # Font (Name, size, bold, italic)
-                 'cursor': 'hand2',                 # Курсор hand1/hand2/circle/clock/cross/dotbox/exchange/fleur/heart/man/mouse/pirate/plus/shuttle/sizing/spider/spraycan/star/target/tcross/trek/watch/
+                 'cursor': 'hand2',                 # Курсор hand1/hand2/circle/clock/cross/dotbox/exchange/fleur/heart/
+                                     man/mouse/pirate/plus/shuttle/sizing/spider/spraycan/star/target/tcross/trek/watch/
                  'relief': 'raised',                # raised/sunken ridge/groove flat/solid
                  'textvariable': '',                # Link text with this var !-> tk.StringVar()
                  'text': 'This is a Label',         # Text for the label (if textvariable not set)
@@ -69,9 +70,9 @@ class CalPopup(tk.Label):   # Class polymorph from tk.Label
         # Button for popup
         self.cal_ico = tk.PhotoImage(file='.\\img\\cal_ico.png').subsample(15)
         btn = tk.Button(self.__main, font=self.__main['font'], command=self.__popup,
-                       cursor='hand2', highlightbackground='#4B4', bg='#393', fg='#AEA', padx=10, image=self.cal_ico)
+                       cursor='hand2', highlightbackground='#4B4', bg='#393', fg='#AEA', image=self.cal_ico)
         #btn.config(text='▦')    # ⌨
-        btn.pack(side='left', ipadx=5, fill='both')
+        btn.pack(side='left', fill='both', padx=3, ipadx=5)
         # Bindings
         self.__bind_hover(btn)
         # Today & Selected
@@ -256,14 +257,16 @@ class DateEntry(tk.Label):      # tk.Frame as defaul but we need to translate Fo
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__day = tk.Entry(self, width=2, **kwargs)
-        bg = self.__day['bg']
-        self.__day.config(readonlybackground=bg)
+        bg, self.hlbg = self.__day['bg'], self.__day['highlightbackground']
+        self.__day.config(readonlybackground=bg, bg=self.hlbg)
         dot_dm = tk.Label(self, text='.', **kwargs)
         dot_dm.config(bg=bg)
         self.__month = tk.Entry(self, width=2, readonlybackground=bg, **kwargs)
+        self.__month.config(readonlybackground=bg, bg=self.hlbg)
         dot_my = tk.Label(self, text='.', **kwargs)
         dot_my.config(bg=bg)
         self.__year = tk.Entry(self, width=4, readonlybackground=bg, **kwargs)
+        self.__year.config(readonlybackground=bg, bg=self.hlbg)
 
         self.__day.pack(side=tk.LEFT)
         dot_dm.pack(side=tk.LEFT)
@@ -395,19 +398,19 @@ class DateEntry(tk.Label):      # tk.Frame as defaul but we need to translate Fo
             self.__day.delete(0, tk.END)
             self.__day.insert(0, '31')
         else:
-            self.__day.config(bg='white')
+            self.__day.config(bg=self.hlbg)
         if 9 < m > 12:
             self.__month.config(bg='#F77')
             self.__month.delete(0, tk.END)
             self.__month.insert(0, '12')
         else:
-            self.__month.config(bg='white')
+            self.__month.config(bg=self.hlbg)
         if y > 999 and (1900 > y or y > 2100):      # Пока не будет 4 знака (999)
             self.__year.config(bg='#F77')
-            self.__year.delete(0, tk.END)
-            self.__year.insert(0, '20' + str(y)[2:])
+            #self.__year.delete(0, tk.END)
+            #self.__year.insert(0, '20' + str(y)[2:])
         else:
-            self.__year.config(bg='white')
+            self.__year.config(bg=self.hlbg)
 
 
 if __name__ == '__main__':
