@@ -1,3 +1,17 @@
+"""
+Version: 0.81
+Author: meok
+
+CHANGE LOG
+v0.81:
+    1. Adding buttons behaviour when settings changes or connect DB or FSSP
+    2. Config default button
+
+
+
+v0.3:
+    1. Making GUI for application
+"""
 import configparser
 import requests
 import time
@@ -35,17 +49,36 @@ class DataBase:
             self.conn = psycopg2.connect(host=pa['host'], database=pa['dbname'], user=pa['user'], password=pa['pwd'])
             self.cur = self.conn.cursor()
         except psycopg2.Error as error:
-            print(error)
+            print('DB INFO', self.conn, self.cur)
+            print('DB ERROR', error)
+            self.conn = None
+            self.cur = None
+        else:
+            print('DB CONNECTED')
 
     # Делаем SELECT
     def select_sql(self, date=None, znak=None):
+        ''' Home version
         select = "SELECT upper(lastname), upper(firstname), upper(secondname), to_char(birthday, 'DD.MM.YYYY'), " \
                  "to_char(creation_date, 'DD.MM.YYYY hh24:mi:ss'), court_adr, court_numb, reestr, " \
                  "md5(concat(upper(lastname), upper(firstname), upper(secondname), to_char(birthday, 'DD.MM.YYYY'))) " \
                  "FROM fssp as v WHERE creation_date::date "
+        '''
+        select = "SELECT " \
+                 "upper(v.last_name), upper(v.first_name), upper(v.patronymic), to_char(v.birthdate, 'DD.MM.YYYY'), " \
+                 "to_char(c.creation_date, 'DD.MM.YYYY hh24:mi:ss'), o.address, u.\"number\", " \
+                 "CASE WHEN mia_check_result = 1 THEN 'МВД' ELSE 'ФССП' END, " \
+                 "md5(concat(upper(v.last_name), upper(v.first_name), upper(v.patronymic), v.birthdate::date)) " \
+                 "FROM visitor_violation_checks AS c " \
+                 "RIGHT JOIN visitors AS v ON c.visitor_id = v.id " \
+                 "RIGHT JOIN court_objects AS o ON v.court_object_id = o.id " \
+                 "RIGHT JOIN court_stations AS u ON v.court_station_id = u.id " \
+                 "WHERE v.court_object_id not IN (173, 174) " \
+                 "AND (mia_check_result = 1 OR fssp_check_result = 1) " \
+                 "AND v.creation_date::date "
         select += ">=" if znak else "="
         select += "'" + date + "'" if date else "current_date"  # Нужна проверочка - что date соответсвует формату
-        select += " ORDER BY creation_date DESC"
+        select += " ORDER BY v.creation_date DESC"
         self.cur.execute(select)
         result = self.cur.fetchall()
         return result
@@ -65,11 +98,8 @@ class DataBase:
 class App(tk.Tk):
     def __init__(self, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
-        # Отобразить встроенные стили
-        style = ttk.Style()
-        print(style.theme_names())
-        style.theme_use('vista')
-
+        # Создаем объект БД
+        self.db = DataBase()
         # App window Settings
         self.title("Проверяльщик ФССП")                    # Название
         self.geometry('+500+300')    # Смещение окна
@@ -98,7 +128,7 @@ class App(tk.Tk):
         # Вызов класса ФССП
         self.fssp = FSSP(self.cfg['FSSP.RU']['TOKEN'], self.cfg['FSSP.RU']['PAUSE'], self.cfg['FSSP.RU']['URL'])
         # Вызов класса ДБ
-        self.db = DataBase({'host': self.cfg['POSTGRES']['HOST'], 'dbname': self.cfg['POSTGRES']['DBNAME'],
+        self.db.open({'host': self.cfg['POSTGRES']['HOST'], 'dbname': self.cfg['POSTGRES']['DBNAME'],
                             'user': self.cfg['POSTGRES']['USER'], 'pwd': self.cfg['POSTGRES']['PWD']})
 
     # Главное меню (полоска)
@@ -140,7 +170,7 @@ class App(tk.Tk):
         toolbar.pack(side='top', fill='both', padx=2)
         self.bind('<ButtonRelease>', lambda e: self.change_number_name())     # Or check gui funct
         # ICONS
-        self.settings_ico = tk.PhotoImage(file='.\\img\\setting4.png').subsample(6)
+        self.settings_ico = tk.PhotoImage(file='.\\img\\settings2.png').subsample(6)
         self.sql_ico = tk.PhotoImage(file='.\\img\\sql2.png').subsample(15)
         self.fssp_ico = tk.PhotoImage(file='.\\img\\fssp.png').subsample(8)
         self.save_ico = tk.PhotoImage(file='.\\img\\save.png').subsample(12)
@@ -175,7 +205,7 @@ class App(tk.Tk):
         self.btn_save = tk.Button(toolbar, command=self.__save_data, image=self.save_ico, bg='#393', state='disabled')
         self.btn_save.pack(side='left', fill='both', ipadx=4)
 
-        author = tk.Label(toolbar, font=('Console', 8), text='Version: 1.01\nAuthor: meok', bg='#beb', fg='#000')
+        author = tk.Label(toolbar, font=('Console', 8), text='Version: 0.81\nAuthor: meok', bg='#beb', fg='#000')
         author.pack(side='left', fill='both', expand=True)
 
     def tool_bar_btns_off(self, off=True):
@@ -183,15 +213,17 @@ class App(tk.Tk):
         self.btn_s.config(state=state)
         self.btn_sql.config(state=state)
         self.btn_fssp.config(state=state)
+        self.btn_save.config(state=state)
 
     def tool_bar_btns_chk(self):
-        frame = self.frames[MainF]
-        s_fssp, s_save = frame.get_state()
-        db_state = 'normal' if self.db.cur else 'disabled'
+        s_fssp, s_save = self.frames[MainF].get_state()
+        db_state = 'normal' if self.db.cur is not None else 'disabled'
+        print(db_state, self.db.cur)
         self.btn_s.config(state='normal')
         self.btn_sql.config(state=db_state)
         self.btn_fssp.config(state=s_fssp)
         self.btn_save.config(state=s_save)
+        print(self.btn_sql['state'])
 
     def change_number_name(self):
         name = 'число' if self.select_znak.value == 'За' else 'числа'

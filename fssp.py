@@ -94,6 +94,7 @@ class FSSP:
 
         url = self.url + 'search/group'
         response = requests.post(url=url, json=reqst)
+        print('UUID GETTING')
         if self.__response_status(response):
             self.__uuid = response.json()['response']['task']
             return True
@@ -117,6 +118,7 @@ class FSSP:
         """ Проверка пока не выполнится TASK или какая ошибка """
         while True:
             status = self.__uuid_req('status')
+            print('WAIT WHILE FINISH', status)
             if status is False or status == 3:
                 return False
             elif status == 0:
