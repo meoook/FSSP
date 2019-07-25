@@ -61,12 +61,12 @@ class DataBase:
 
     # Делаем SELECT
     def select_sql(self, date=None, znak=None):
-        ''' Home version '''
+        ''' Home version
         select = "SELECT upper(lastname), upper(firstname), upper(secondname), to_char(birthday, 'DD.MM.YYYY'), " \
                  "to_char(creation_date, 'DD.MM.YYYY hh24:mi:ss'), court_adr, court_numb, reestr, " \
                  "md5(concat(upper(lastname), upper(firstname), upper(secondname), to_char(birthday, 'DD.MM.YYYY'))) " \
                  "FROM fssp as v WHERE creation_date::date "
-        ''' work version 
+        work version '''
         select = "SELECT " \
                  "upper(v.last_name), upper(v.first_name), upper(v.patronymic), to_char(v.birthdate, 'DD.MM.YYYY'), " \
                  "to_char(c.creation_date, 'DD.MM.YYYY hh24:mi:ss'), o.address, u.\"number\", " \
@@ -79,7 +79,7 @@ class DataBase:
                  "WHERE v.court_object_id not IN (173, 174) " \
                  "AND (mia_check_result = 1 OR fssp_check_result = 1) " \
                  "AND v.creation_date::date "
-        '''
+
         select += ">=" if znak else "="
         select += "'" + date + "'" if date else "current_date"  # Нужна проверочка - что date соответсвует формату
         select += " ORDER BY v.creation_date DESC"
