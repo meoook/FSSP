@@ -75,12 +75,14 @@ class CalPopup(tk.Label):   # Class polymorph from tk.Label
         btn.pack(side='left', fill='both', padx=3, ipadx=5)
         # Bindings
         self.__bind_hover(btn)
+        print('\33[94m====== CALENDAR CLASS ======\33[0m')
         # Today & Selected
         self.date = time.strftime("%d.%m.%Y", time.localtime())
         self.__main.date = self.date
         # Setting up font size
         self.font_size = 14
         self.__styles_setter()
+        print('\33[94m============================\33[0m')
 
     @property
     def date(self):

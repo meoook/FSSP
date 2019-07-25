@@ -49,7 +49,6 @@ class DataBase:
             self.conn = psycopg2.connect(host=pa['host'], database=pa['dbname'], user=pa['user'], password=pa['pwd'])
             self.cur = self.conn.cursor()
         except psycopg2.Error as error:
-            print('DB INFO', self.conn, self.cur)
             print('DB ERROR', error)
             self.conn = None
             self.cur = None
@@ -58,12 +57,12 @@ class DataBase:
 
     # Делаем SELECT
     def select_sql(self, date=None, znak=None):
-        ''' Home version
+        ''' Home version '''
         select = "SELECT upper(lastname), upper(firstname), upper(secondname), to_char(birthday, 'DD.MM.YYYY'), " \
                  "to_char(creation_date, 'DD.MM.YYYY hh24:mi:ss'), court_adr, court_numb, reestr, " \
                  "md5(concat(upper(lastname), upper(firstname), upper(secondname), to_char(birthday, 'DD.MM.YYYY'))) " \
                  "FROM fssp as v WHERE creation_date::date "
-        '''
+        ''' work version 
         select = "SELECT " \
                  "upper(v.last_name), upper(v.first_name), upper(v.patronymic), to_char(v.birthdate, 'DD.MM.YYYY'), " \
                  "to_char(c.creation_date, 'DD.MM.YYYY hh24:mi:ss'), o.address, u.\"number\", " \
@@ -76,6 +75,7 @@ class DataBase:
                  "WHERE v.court_object_id not IN (173, 174) " \
                  "AND (mia_check_result = 1 OR fssp_check_result = 1) " \
                  "AND v.creation_date::date "
+        '''
         select += ">=" if znak else "="
         select += "'" + date + "'" if date else "current_date"  # Нужна проверочка - что date соответсвует формату
         select += " ORDER BY v.creation_date DESC"
@@ -98,8 +98,6 @@ class DataBase:
 class App(tk.Tk):
     def __init__(self, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
-        # Создаем объект БД
-        self.db = DataBase()
         # App window Settings
         self.title("Проверяльщик ФССП")                    # Название
         self.geometry('+500+300')    # Смещение окна
@@ -110,7 +108,7 @@ class App(tk.Tk):
         # Отображаемые модули\виджиты на главном фрейме
         self.menu_bar()
         self.tool_bar()
-        self.tool_bar_btns_off()    # Кнопки выключены пока не выполнена проверка
+        #self.tool_bar_btns_off()    # Кнопки выключены пока не выполнена проверка
         self.log_window()
         # Создаем верхний фрейм, куда будем пихать другие страницы\фреймы
         container = tk.Frame(self)
@@ -121,15 +119,36 @@ class App(tk.Tk):
             frame = F(container, self)
             self.frames[F] = frame
             frame.grid(row=0, column=0, sticky='nsew')
-        # При запуске показываем заглавную страницу
+        # При запуске инициализируем конфиг и показываем заглавную страницу
+        self.threads = []
         self.show_frame(MainF)
+        self.to_log('TEST MESSAGE CRITICAL', 1)
+        self.to_log('TEST MESSAGE WARNING', 2)
+        self.to_log('TEST MESSAGE INFO', 3)
 
-    def get_connections(self):
+    def init_connections(self):
+        for x in self.threads:
+            if x.is_alive():
+                print('BUSY')
+                return False
+        print('NOT BUSY')
+        thr = threading.Thread(target=self.connections)  # Поскольку в процессе есть запрос к бд thread
+        self.threads.append(thr)
+        thr.start()
+        return True
+
+    def connections(self):
+        """ Connect to DB, Check FSSP, Check buttons - in other thread """
+        self.get_config()
+        self.btn_sql.config(state='disabled')
+        self.btn_fssp.config(state='disabled')
+        self.btn_save.config(state='disabled')
         # Вызов класса ФССП
         self.fssp = FSSP(self.cfg['FSSP.RU']['TOKEN'], self.cfg['FSSP.RU']['PAUSE'], self.cfg['FSSP.RU']['URL'])
         # Вызов класса ДБ
-        self.db.open({'host': self.cfg['POSTGRES']['HOST'], 'dbname': self.cfg['POSTGRES']['DBNAME'],
+        self.db = DataBase({'host': self.cfg['POSTGRES']['HOST'], 'dbname': self.cfg['POSTGRES']['DBNAME'],
                             'user': self.cfg['POSTGRES']['USER'], 'pwd': self.cfg['POSTGRES']['PWD']})
+        self.tool_bar_btns_chk()
 
     # Главное меню (полоска)
     def menu_bar(self):
@@ -170,12 +189,13 @@ class App(tk.Tk):
         toolbar.pack(side='top', fill='both', padx=2)
         self.bind('<ButtonRelease>', lambda e: self.change_number_name())     # Or check gui funct
         # ICONS
-        self.settings_ico = tk.PhotoImage(file='.\\img\\settings2.png').subsample(6)
+        self.settings_ico = tk.PhotoImage(file='.\\img\\setting4.png').subsample(6)
+        self.home_ico = tk.PhotoImage(file='.\\img\\home.png').subsample(12)
         self.sql_ico = tk.PhotoImage(file='.\\img\\sql2.png').subsample(15)
         self.fssp_ico = tk.PhotoImage(file='.\\img\\fssp.png').subsample(8)
         self.save_ico = tk.PhotoImage(file='.\\img\\save.png').subsample(12)
         ''' ToolBar elements '''
-        self.btn_s = tk.Button(toolbar, command=lambda: self.show_frame(SettingsF), image=self.settings_ico, bg='#393')
+        self.btn_s = tk.Button(toolbar, command=lambda: self.tool_bar_fbtn(), image=self.settings_ico, bg='#393')
         self.btn_s.pack(side='left', fill='both')
         self.btn_s.config(highlightbackground='#4B4')
         TkCombo.bind_hover(self.btn_s)
@@ -208,6 +228,16 @@ class App(tk.Tk):
         author = tk.Label(toolbar, font=('Console', 8), text='Version: 0.81\nAuthor: meok', bg='#beb', fg='#000')
         author.pack(side='left', fill='both', expand=True)
 
+    def tool_bar_fbtn(self, where='home'):
+        if where == 'x':
+            self.btn_s.config(image=self.settings_ico)
+            self.btn_s.config(command=lambda: self.tool_bar_fbtn('home'))
+            self.show_frame(MainF)
+        else:
+            self.btn_s.config(image=self.home_ico)
+            self.btn_s.config(command=lambda: self.tool_bar_fbtn('x'))
+            self.show_frame(SettingsF)
+
     def tool_bar_btns_off(self, off=True):
         state = 'disabled' if off else 'normal'
         self.btn_s.config(state=state)
@@ -218,12 +248,10 @@ class App(tk.Tk):
     def tool_bar_btns_chk(self):
         s_fssp, s_save = self.frames[MainF].get_state()
         db_state = 'normal' if self.db.cur is not None else 'disabled'
-        print(db_state, self.db.cur)
         self.btn_s.config(state='normal')
         self.btn_sql.config(state=db_state)
         self.btn_fssp.config(state=s_fssp)
         self.btn_save.config(state=s_save)
-        print(self.btn_sql['state'])
 
     def change_number_name(self):
         name = 'число' if self.select_znak.value == 'За' else 'числа'
@@ -231,21 +259,17 @@ class App(tk.Tk):
 
     # Табло для отображения логов
     def log_window(self):
-        canvas = tk.Canvas(self, height=155, bg='#002')
-        canvas.pack(side='bottom', fill=tk.X, expand=tk.YES)
-
-        [canvas.create_line(10+x*20, 10, 10+x*20, 150, width=1, fill='#191938') for x in range(52)]
-        [canvas.create_line(10, 10+y*20, 1030, 10+y*20, width=1, fill='#191938') for y in range(8)]
-
-        canvas.create_line(20, 80, 1020, 80, width=1, fill='#FFF', arrow=tk.LAST)
-        canvas.create_text(40, 70, text='Пульс', fill='#FFF')
+        self.log_f = tk.Text(self, height=10, bg='#002', fg='#CC3', selectbackground='#118', padx=10)
+        self.log_f.pack(side='bottom', fill='both', padx=2, pady=2)
+        for x in range(10):
+            self.log_f.insert(tk.END, "\nBye Bye.....{}".format(x))
+        self.log_f.see(tk.END)
 
     # Вывод на передний план фрейма
     def show_frame(self, context):
         frame = self.frames[context]
         frame.tkraise()
-        self.get_config()
-        self.tool_bar_btns_chk()
+        self.init_connections()
 
     # Собираем данные для request -> fssp.ru
     def __req_get_sql(self):
@@ -274,7 +298,6 @@ class App(tk.Tk):
         print('SAVING ))')
         pass
 
-    # CONFIG
     def get_config(self):
         self.cfg = configparser.ConfigParser()
         config = configparser.ConfigParser()
@@ -306,12 +329,35 @@ class App(tk.Tk):
             print('Creating config file\33[94m config.ini\33[0m with default settings')
         self.save_cfg()
 
-        thr = threading.Thread(target=self.get_connections)          # Поскольку в процессе есть запрос к бд thread
-        thr.start()
-
     def save_cfg(self):
         with open('config.ini', 'w') as cfg_file:
             self.cfg.write(cfg_file)
+
+    # Записать сообщение в лог файл
+    def to_log(self, msg: str, deep_lvl: int = 3):
+        if msg is False:
+            msg = 'Try to put empty message in log'
+            deep_lvl = 1
+        if deep_lvl == 1:
+            echo = '\x1b[31m[CRIT]\x1b[0m ' + msg
+            msg = '[CRIT] ' + msg
+        elif deep_lvl == 2:
+            echo = '\x1b[33m[ERR]\x1b[0m ' + msg
+            msg = '[ERR] ' + msg
+        else:
+            echo = '\x1b[94m[INFO]\x1b[0m ' + msg
+            msg = '[INFO] ' + msg
+        msg = time.strftime("%d.%m.%y %H:%M:%S", time.localtime()) + ' ' + msg
+        print(echo)
+        self.log_f.insert(tk.END, "\n{}".format(msg))
+        self.log_f.see(tk.END)
+        if self.cfg['LOGS']['SAVE']:
+            pass
+            '''
+            if self.cfg['LOGS']['LVL'] >= deep_lvl:
+                with open(LOG_FILE_NAME, "a") as filo:
+                    filo.write(msg + '\n')
+            '''
 
 
 class MainF(tk.Frame):
@@ -320,7 +366,7 @@ class MainF(tk.Frame):
         tk.Frame.__init__(self, parent)
         #self.config(bd=2, relief='groove')
 
-        self.tree = ttk.Treeview(self, height=10, show='headings', padding=0, selectmode='browse',
+        self.tree = ttk.Treeview(self, height=12, show='headings', padding=0, selectmode='browse',
                              column=('F', 'I', 'O', 'dr', 'dt', 'adr', 'court', 'rst', 'csum', 'comm', 'jail', 'sum'),
                              displaycolumns=('dt', 'adr', 'court', 'rst', 'csum', 'comm', 'jail', 'sum'))
         # Таблица для вывода результатов
@@ -397,12 +443,11 @@ class SettingsF(tk.Frame):
         self.o_pg_pass = tk.StringVar()
 
         self.settings_get()
-
         self.trace()
 
         # ======== MAIN OPTIONS =========================================
         opt_main = tk.Frame(self, bd=2, relief='groove')
-        opt_main.grid(row=0, column=0, padx=5, ipadx=0, pady=5, ipady=5, sticky='WENS')
+        opt_main.grid(row=0, column=0, padx=5, ipadx=0, pady=5, ipady=5, sticky='WEN')
         tk.Label(opt_main, text='Main Settings', font=font_big).grid(row=0, column=0, columnspan=2)
         tk.Label(opt_main, text='Save results', anchor='w', width=15).grid(row=1, column=0, sticky='EW', padx=5)
         tk.Button(opt_main, textvariable=self.o_m_save, width=3, command=lambda: self.change(self.o_m_save, 'b')).grid(row=1, column=1)
@@ -423,9 +468,7 @@ class SettingsF(tk.Frame):
         opt_fssp.grid(row=0, column=1, padx=0, ipadx=0, pady=5, ipady=5, columnspan=2, sticky='WEN')
         tk.Label(opt_fssp, text='FSSP Settings', font=font_big).grid(row=0, column=0, columnspan=3)
         tk.Label(opt_fssp, text='API URL', anchor='w').grid(row=1, column=0, sticky='EW')
-        xx = tk.Entry(opt_fssp, textvariable=self.o_f_url, width=30)
-        xx.grid(row=1, column=1, columnspan=2)
-        #xx.bind('<KeyRelease>', lambda event: self.change_entry(event))
+        tk.Entry(opt_fssp, textvariable=self.o_f_url, width=30).grid(row=1, column=1, columnspan=2)
         tk.Label(opt_fssp, text='TOKEN', anchor='w').grid(row=2, column=0, sticky='EW')
         tk.Entry(opt_fssp, textvariable=self.o_f_token).grid(row=2, column=1, sticky='EW')
         tk.Button(opt_fssp, text='CHECK', width=6).grid(row=2, column=2, rowspan=2, sticky='NS')
@@ -441,7 +484,7 @@ class SettingsF(tk.Frame):
         tk.Entry(opt_path, textvariable=self.o_p_name).grid(row=2, column=1)
         # ======== Postgres OPTIONS =====================================
         opt_pg = tk.Frame(self, bd=2, relief='groove', padx=5)
-        opt_pg.grid(row=0, column=3, padx=5, ipadx=0, pady=5, ipady=5, rowspan=2, sticky='WEN')
+        opt_pg.grid(row=0, column=3, padx=5, ipadx=0, pady=5, ipady=5, sticky='WEN')
         tk.Label(opt_pg, text='Postgres Settings', font=font_big).grid(row=0, column=0, columnspan=2)
         tk.Label(opt_pg, text='Hostname', anchor='w').grid(row=1, column=0, sticky='EW')
         tk.Entry(opt_pg, textvariable=self.o_pg_host, width=12).grid(row=1, column=1)
@@ -454,11 +497,6 @@ class SettingsF(tk.Frame):
         # ======== RESTORE DEFAULTS BUTTON =====================================
         btn_save = tk.Button(self, bd=2, padx=5, font=font_big, text='DEFAULTS', command=self.defaults)
         btn_save.grid(row=2, column=3, padx=5, ipadx=0, pady=5, ipady=5, rowspan=2, sticky='WEN')
-
-    def callback(self, name, index, mode):  # DELETE mb to add *args to settings_set() function and call it
-        value = self.cc.globalgetvar(name)
-        print('CallBack with name: {}, index: {}, mode: {}, value: {}'.format(name, index, mode, value))
-        self.settings_set()
 
     def settings_get(self):
         self.o_m_save.set(self.cc.cfg['OPTIONS']['SAVE_TO_FILE'])
@@ -501,6 +539,7 @@ class SettingsF(tk.Frame):
         self.cc.cfg.set('POSTGRES', 'PWD', self.o_pg_pass.get())
 
         self.cc.save_cfg()
+        self.cc.init_connections()
 
     def change(self, var, typo='b'):
         v = var.get()
@@ -524,7 +563,6 @@ class SettingsF(tk.Frame):
 
     def trace(self, on=True):   # trace_vdelete
         if on:
-            print('change OK')
             self.o_p_dir.trace("w", self.settings_set)
             self.o_p_name.trace("w", self.settings_set)
             self.o_f_pause.trace("w", self.settings_set)
@@ -535,7 +573,6 @@ class SettingsF(tk.Frame):
             self.o_pg_user.trace("w", self.settings_set)
             self.o_pg_pass.trace("w", self.settings_set)
         else:
-            print('Turn off')
             self.trace_clear(self.o_p_dir)
             self.trace_clear(self.o_p_name)
             self.trace_clear(self.o_f_pause)
@@ -550,7 +587,6 @@ class SettingsF(tk.Frame):
     def trace_clear(str_var):
         for t in str_var.trace_vinfo():
             str_var.trace_vdelete(*t)
-
 
 
 class TkCombo(tk.Frame):
