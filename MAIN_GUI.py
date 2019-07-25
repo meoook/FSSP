@@ -3,12 +3,16 @@ Version: 0.81
 Author: meok
 
 CHANGE LOG
+v0.82:
+    1. Adding logging
 v0.81:
-    1. Adding buttons behaviour when settings changes or connect DB or FSSP
+    1. Adding buttons behaviour when settings changes or connect DB or FSSP (threads)
     2. Config default button
-
-
-
+v0.8: ToolBar several fixes
+v0.7: Own calendar class
+v0.6: Adding TreeView
+v0.5: Adding ToolBar
+v0.4: Adding MenuBar
 v0.3:
     1. Making GUI for application
 """
@@ -225,7 +229,7 @@ class App(tk.Tk):
         self.btn_save = tk.Button(toolbar, command=self.__save_data, image=self.save_ico, bg='#393', state='disabled')
         self.btn_save.pack(side='left', fill='both', ipadx=4)
 
-        author = tk.Label(toolbar, font=('Console', 8), text='Version: 0.81\nAuthor: meok', bg='#beb', fg='#000')
+        author = tk.Label(toolbar, font=('Console', 8), text='Version: 0.82\nAuthor: meok', bg='#beb', fg='#000')
         author.pack(side='left', fill='both', expand=True)
 
     def tool_bar_fbtn(self, where='home'):
