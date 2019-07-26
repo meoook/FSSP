@@ -3,21 +3,29 @@ Version: 0.81
 Author: meok
 
 CHANGE LOG
-v0.82:
-    1. Adding logging
-v0.81:
-    1. Adding buttons behaviour when settings changes or connect DB or FSSP (threads)
-    2. Config default button
-v0.8: ToolBar several fixes
-v0.7: Own calendar class
-v0.6: Adding TreeView
-v0.5: Adding ToolBar
-v0.4: Adding MenuBar
+v0.9.1: Colors in logger
+v0.9:   Adding logging
+v0.8:   Adding buttons behaviour when settings changes or connect DB or FSSP (threads)
+        Config default button
+v0.8:   ToolBar several fixes
+v0.7:   Own calendar class
+v0.6:   Adding TreeView
+v0.5:   Adding ToolBar
+v0.4:   Adding MenuBar
 v0.3:
     1. Making GUI for application
 """
+'''
+TO DO - CREATE COLOR CLASS
+INFO    #59F
+FAIL    #F73
+CRIT    #F44
+
+OK      #FF0
+ERR     #44F
+INF		#EE4
+'''
 import configparser
-import requests
 import time
 import re
 import psycopg2
@@ -28,27 +36,23 @@ from tkinter import ttk
 from myCal import DateEntry, CalPopup
 from fssp import FSSP
 
-'''
-COLORS
-INFO    93
-ERROR   33
-CRIT    31
-OK      94
-FAIL    91
-'''
 
-
-# Класс Базы Данных
 class DataBase:
-    def __init__(self, db_connect=None):
+    """ Data base class. Only for FSSP_checker """
+    def __init__(self, db_connect=None, log_handler=None):
         self.conn = None
         self.cur = None
-
         if db_connect:
             self.open(db_connect)
+        # Прикручиваем LOGGER
+        if log_handler is None:
+            def log_pass(*args, **kwargs):
+                print('DataBase class. ERROR: Log handler not found.')
+            self.to_log = log_pass
+        else:
+            self.to_log = log_handler.to_log
 
-    # Открываем соединение с БД
-    def open(self, pa):
+    def open(self, pa):     # Parameters
         try:
             self.conn = psycopg2.connect(host=pa['host'], database=pa['dbname'], user=pa['user'], password=pa['pwd'])
             self.cur = self.conn.cursor()
@@ -61,7 +65,7 @@ class DataBase:
 
     # Делаем SELECT
     def select_sql(self, date=None, znak=None):
-
+        '''
         # Home version
         select = "SELECT upper(lastname), upper(firstname), upper(secondname), to_char(birthday, 'DD.MM.YYYY'), " \
                  "to_char(creation_date, 'DD.MM.YYYY hh24:mi:ss'), court_adr, court_numb, reestr, " \
@@ -81,13 +85,14 @@ class DataBase:
                  "WHERE v.court_object_id not IN (173, 174) " \
                  "AND (mia_check_result = 1 OR fssp_check_result = 1) " \
                  "AND v.creation_date::date "
-        '''
-        select += ">=" if znak else "="
+
+        select += ">= " if znak else "= "
         select += "'" + date + "'" if date else "current_date"  # Нужна проверочка - что date соответсвует формату
         select += " ORDER BY v.creation_date DESC"
         self.cur.execute(select)
-        result = self.cur.fetchall()
-        return result
+        self.to_log('SQL request return {} rows. Conditions: {}'
+                    , 3, str(self.cur.rowcount), select[632:-29].upper(), c1='#EE4', c2='#EE4')
+        return self.cur.fetchall()
 
     # Закрываем соединение с БД - не понятно, работает ли :)
     def close(self):
@@ -138,8 +143,6 @@ class App(tk.Tk):
         self.to_log('test {} testing asd  asd {} testing 3 and more {} parametre {}', 3,
                     'COLORS', '.FORMAT', 'USER', 'WINDOWS', c1='#F73', c2='#37F', c3='#F0F', c4='#3F3')
 
-
-
     def init_connections(self):
         for x in self.threads:
             if x.is_alive():
@@ -161,10 +164,9 @@ class App(tk.Tk):
         self.fssp = FSSP(self.cfg['FSSP.RU']['TOKEN'], self.cfg['FSSP.RU']['PAUSE'], self.cfg['FSSP.RU']['URL'])
         # Вызов класса ДБ
         self.db = DataBase({'host': self.cfg['POSTGRES']['HOST'], 'dbname': self.cfg['POSTGRES']['DBNAME'],
-                            'user': self.cfg['POSTGRES']['USER'], 'pwd': self.cfg['POSTGRES']['PWD']})
+                            'user': self.cfg['POSTGRES']['USER'], 'pwd': self.cfg['POSTGRES']['PWD']}, self)
         self.tool_bar_btns_chk()
 
-    # Главное меню (полоска)
     def menu_bar(self):
         menubar = tk.Menu(self)
         # File SubMenu
@@ -195,7 +197,6 @@ class App(tk.Tk):
         # Включаем для Object
         self.config(menu=menubar)
 
-    # Меню из иконок
     def tool_bar(self):
         font = ('helvetica', 27)     # "Arial 24"
         # ToolBar Frame
@@ -310,7 +311,7 @@ class App(tk.Tk):
         if config.read('config.ini'):
             self.to_log('Reading config file {} - {}', 3, 'config.ini', 'OK', c1='#CC0', c2='#3B3')
         else:
-            self.to_log('Reading config file {} - {}', 3, 'config.ini', 'Fail', c1='#CC0', c2='#C33')
+            self.to_log('Reading config file {} - {}', 1, 'config.ini', 'Fail', c1='#CC0', c2='#C33')
         self.cfg.add_section('OPTIONS')     # OPTIONS CONFIG
         self.cfg.set('OPTIONS', 'SAVE_TO_FILE', config.get('OPTIONS', 'SAVE_TO_FILE', fallback='ON'))
         self.cfg.set('OPTIONS', 'FILE_RENEW', config.get('OPTIONS', 'FILE_RENEW', fallback='ON'))
@@ -357,7 +358,7 @@ class App(tk.Tk):
         else:
             echo = '\x1b[94m[INFO]\x1b[0m ' + msg
             msg = '[INFO] ' + msg
-            lvl_color = '#37F'
+            lvl_color = '#59F'
         msg = time.strftime("%d.%m.%y %H:%M:%S", time.localtime()) + ' ' + msg
         print(echo.format(*args))
         msg_copy = msg
