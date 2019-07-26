@@ -37,35 +37,52 @@ from myCal import DateEntry, CalPopup
 from fssp import FSSP
 
 
+class Color:
+    time = '#AA5'
+    inf = '#CC0'
+    err = '#C33'
+    ok = '#3B3'
+
+    info = '#59F'
+    fail = '#F93'
+    crit = '#F00'
+
+    hl = '#FF0'
+    hl1 = '#F0F'
+    hl2 = '#3F3'
+    zero = '#FFF'
+
+
 class DataBase:
     """ Data base class. Only for FSSP_checker """
     def __init__(self, db_connect=None, log_handler=None):
         self.conn = None
         self.cur = None
-        if db_connect:
-            self.open(db_connect)
         # Прикручиваем LOGGER
         if log_handler is None:
             def log_pass(*args, **kwargs):
-                print('DataBase class. ERROR: Log handler not found.')
+                print('DataBase class ERROR: Log handler not found.', *args)
             self.to_log = log_pass
         else:
             self.to_log = log_handler.to_log
+
+        if db_connect:
+            self.open(db_connect)
 
     def open(self, pa):     # Parameters
         try:
             self.conn = psycopg2.connect(host=pa['host'], database=pa['dbname'], user=pa['user'], password=pa['pwd'])
             self.cur = self.conn.cursor()
         except psycopg2.Error as error:
-            print('DB ERROR', error)
+            self.to_log('DB ERROR {}', 1, error, c1=Color.zero)
             self.conn = None
             self.cur = None
         else:
-            print('DB CONNECTED')
+            self.to_log('DB connected - {}', 3, 'OK', c1=Color.ok)
 
     # Делаем SELECT
     def select_sql(self, date=None, znak=None):
-        '''
+
         # Home version
         select = "SELECT upper(lastname), upper(firstname), upper(secondname), to_char(birthday, 'DD.MM.YYYY'), " \
                  "to_char(creation_date, 'DD.MM.YYYY hh24:mi:ss'), court_adr, court_numb, reestr, " \
@@ -85,13 +102,14 @@ class DataBase:
                  "WHERE v.court_object_id not IN (173, 174) " \
                  "AND (mia_check_result = 1 OR fssp_check_result = 1) " \
                  "AND v.creation_date::date "
-
+        '''
         select += ">= " if znak else "= "
         select += "'" + date + "'" if date else "current_date"  # Нужна проверочка - что date соответсвует формату
         select += " ORDER BY v.creation_date DESC"
         self.cur.execute(select)
         self.to_log('SQL request return {} rows. Conditions: {}'
-                    , 3, str(self.cur.rowcount), select[632:-29].upper(), c1='#EE4', c2='#EE4')
+                    , 3, str(self.cur.rowcount), select[294:-29].upper(), c1=Color.inf, c2=Color.info)
+                    #, 3, str(self.cur.rowcount), select[632:-29].upper(), c1='#EE4', c2='#EE4')
         return self.cur.fetchall()
 
     # Закрываем соединение с БД - не понятно, работает ли :)
@@ -109,6 +127,7 @@ class DataBase:
 class App(tk.Tk):
     def __init__(self, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
+        Color()   # Load colors
         # App window Settings
         self.title("Проверяльщик ФССП")                    # Название
         self.geometry('+500+300')    # Смещение окна
@@ -135,20 +154,18 @@ class App(tk.Tk):
         self.threads = []
         self.show_frame(MainF)
 
-        self.to_log('TEST MESSAGE INFO')
-        self.to_log('TEST MESSAGE WARNING', 2)
-        self.to_log('TEST MESSAGE CRITICAL', 1)
-        self.to_log('LOG {} HAVE DIFFERENT {}', 3, 'FUNCTION', 'PARAMETERS', c1='#44F', c2='#EE4')
-        self.to_log('YOU CAN CHANGE {} AND USE {}', 3, 'COLORS', '.FORMAT', c1='#F00', c2='#FFF')
-        self.to_log('test {} testing asd  asd {} testing 3 and more {} parametre {}', 3,
-                    'COLORS', '.FORMAT', 'USER', 'WINDOWS', c1='#F73', c2='#37F', c3='#F0F', c4='#3F3')
+        self.to_log('COLOR TEST COLOR TEST', 1)
+        self.to_log('hgf {} xa xa {} ad a', 3, 'time_TIME', 'Zero_zeRO', c1=Color.time, c2=Color.zero)
+        self.to_log('oa {} dfa {} 44d a {} dad', 3, 'Crit', 'fail', 'info', c1=Color.crit, c2=Color.fail, c3=Color.info)
+        self.to_log('{} saFa {} xa {} 32a', 2, 'information', 'ok_OK', 'error', c1=Color.inf, c2=Color.ok, c3=Color.err)
+        self.to_log('h {} xa {} zz {} asd', 1, 'hi_ligt', 'hl_ght1', 'hl_ght2', c1=Color.hl, c2=Color.hl1, c3=Color.hl2)
 
     def init_connections(self):
         for x in self.threads:
             if x.is_alive():
-                print('BUSY')
+                self.to_log('Thread is busy. Try later.', 3)
                 return False
-        print('NOT BUSY')
+        self.to_log('Thread free. Trying connections...', 3)
         thr = threading.Thread(target=self.connections)  # Поскольку в процессе есть запрос к бд thread
         self.threads.append(thr)
         thr.start()
@@ -309,9 +326,9 @@ class App(tk.Tk):
         self.cfg = configparser.ConfigParser()
         config = configparser.ConfigParser()
         if config.read('config.ini'):
-            self.to_log('Reading config file {} - {}', 3, 'config.ini', 'OK', c1='#CC0', c2='#3B3')
+            self.to_log('Reading config file {} - {}', 3, 'config.ini', 'OK', c1=Color.inf, c2=Color.ok)
         else:
-            self.to_log('Reading config file {} - {}', 1, 'config.ini', 'Fail', c1='#CC0', c2='#C33')
+            self.to_log('Reading config file {} - {}', 1, 'config.ini', 'Fail', c1=Color.inf, c2=Color.fail)
         self.cfg.add_section('OPTIONS')     # OPTIONS CONFIG
         self.cfg.set('OPTIONS', 'SAVE_TO_FILE', config.get('OPTIONS', 'SAVE_TO_FILE', fallback='ON'))
         self.cfg.set('OPTIONS', 'FILE_RENEW', config.get('OPTIONS', 'FILE_RENEW', fallback='ON'))
@@ -333,7 +350,7 @@ class App(tk.Tk):
         self.cfg.set('LOGS', 'LVL', config.get('LOGS', 'LVL', fallback='3'))
         self.log_file = self.cfg.get('PATH', 'DIR') + 'Logs\\fssp_' + time.strftime("%d.%m.%y", time.localtime())+'.log'
         if not configparser.ConfigParser().read('config.ini'):
-            self.to_log('Creating config file {} with default settings', 3, 'config.ini', c1='#FF0')
+            self.to_log('Creating config file {} with default settings', 3, 'config.ini', c1=Color.info)
         self.save_cfg()
 
     def save_cfg(self):
@@ -350,15 +367,15 @@ class App(tk.Tk):
         if deep_lvl == 1:
             echo = '\x1b[31m[CRIT]\x1b[0m ' + msg
             msg = '[CRIT] ' + msg
-            lvl_color = '#F44'
+            lvl_color = Color.crit
         elif deep_lvl == 2:
             echo = '\x1b[33m[FAIL]\x1b[0m ' + msg
             msg = '[FAIL] ' + msg
-            lvl_color = '#F73'
+            lvl_color = Color.fail
         else:
             echo = '\x1b[94m[INFO]\x1b[0m ' + msg
             msg = '[INFO] ' + msg
-            lvl_color = '#59F'
+            lvl_color = Color.info
         msg = time.strftime("%d.%m.%y %H:%M:%S", time.localtime()) + ' ' + msg
         print(echo.format(*args))
         msg_copy = msg
