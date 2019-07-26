@@ -61,12 +61,14 @@ class DataBase:
 
     # Делаем SELECT
     def select_sql(self, date=None, znak=None):
-        ''' Home version
+
+        # Home version
         select = "SELECT upper(lastname), upper(firstname), upper(secondname), to_char(birthday, 'DD.MM.YYYY'), " \
                  "to_char(creation_date, 'DD.MM.YYYY hh24:mi:ss'), court_adr, court_numb, reestr, " \
                  "md5(concat(upper(lastname), upper(firstname), upper(secondname), to_char(birthday, 'DD.MM.YYYY'))) " \
                  "FROM fssp as v WHERE creation_date::date "
-        work version '''
+        # work version
+        '''
         select = "SELECT " \
                  "upper(v.last_name), upper(v.first_name), upper(v.patronymic), to_char(v.birthdate, 'DD.MM.YYYY'), " \
                  "to_char(c.creation_date, 'DD.MM.YYYY hh24:mi:ss'), o.address, u.\"number\", " \
@@ -79,7 +81,7 @@ class DataBase:
                  "WHERE v.court_object_id not IN (173, 174) " \
                  "AND (mia_check_result = 1 OR fssp_check_result = 1) " \
                  "AND v.creation_date::date "
-
+        '''
         select += ">=" if znak else "="
         select += "'" + date + "'" if date else "current_date"  # Нужна проверочка - что date соответсвует формату
         select += " ORDER BY v.creation_date DESC"
@@ -107,13 +109,14 @@ class App(tk.Tk):
         self.geometry('+500+300')    # Смещение окна
         self.resizable(False, False)                       # Растягивается
         self.iconbitmap(self, default='.\\img\\ico.ico')   # Иконка приложения
-        # Load Config
-        self.get_config()
         # Отображаемые модули\виджиты на главном фрейме
         self.menu_bar()
         self.tool_bar()
-        #self.tool_bar_btns_off()    # Кнопки выключены пока не выполнена проверка
-        self.log_window()
+        # Табло для отображения логов
+        self.log_f = tk.Text(self, height=10, bg='#001', fg='#AAA', selectbackground='#118', padx=10)
+        self.log_f.pack(side='bottom', fill='both', padx=2, pady=2)
+        self.log_f.mark_set('fin', '1.0')        # Load Config - надо после log_window для отображения ошибок
+        self.get_config()
         # Создаем верхний фрейм, куда будем пихать другие страницы\фреймы
         container = tk.Frame(self)
         container.pack(side='top', fill='both', expand=True, padx=2)
@@ -126,9 +129,16 @@ class App(tk.Tk):
         # При запуске инициализируем конфиг и показываем заглавную страницу
         self.threads = []
         self.show_frame(MainF)
-        self.to_log('TEST MESSAGE CRITICAL', 1)
+
+        self.to_log('TEST MESSAGE INFO')
         self.to_log('TEST MESSAGE WARNING', 2)
-        self.to_log('TEST MESSAGE INFO', 3)
+        self.to_log('TEST MESSAGE CRITICAL', 1)
+        self.to_log('LOG {} HAVE DIFFERENT {}', 3, 'FUNCTION', 'PARAMETERS', c1='#44F', c2='#EE4')
+        self.to_log('YOU CAN CHANGE {} AND USE {}', 3, 'COLORS', '.FORMAT', c1='#F00', c2='#FFF')
+        self.to_log('test {} testing asd  asd {} testing 3 and more {} parametre {}', 3,
+                    'COLORS', '.FORMAT', 'USER', 'WINDOWS', c1='#F73', c2='#37F', c3='#F0F', c4='#3F3')
+
+
 
     def init_connections(self):
         for x in self.threads:
@@ -261,14 +271,6 @@ class App(tk.Tk):
         name = 'число' if self.select_znak.value == 'За' else 'числа'
         self.__number_name.set(name)
 
-    # Табло для отображения логов
-    def log_window(self):
-        self.log_f = tk.Text(self, height=10, bg='#002', fg='#CC3', selectbackground='#118', padx=10)
-        self.log_f.pack(side='bottom', fill='both', padx=2, pady=2)
-        for x in range(10):
-            self.log_f.insert(tk.END, "\nBye Bye.....{}".format(x))
-        self.log_f.see(tk.END)
-
     # Вывод на передний план фрейма
     def show_frame(self, context):
         frame = self.frames[context]
@@ -306,9 +308,9 @@ class App(tk.Tk):
         self.cfg = configparser.ConfigParser()
         config = configparser.ConfigParser()
         if config.read('config.ini'):
-            print('Reading config file\33[94m config.ini\33[0m -\33[93m OK\33[0m')
+            self.to_log('Reading config file {} - {}', 3, 'config.ini', 'OK', c1='#CC0', c2='#3B3')
         else:
-            print('Reading config file\33[94m config.ini\33[0m -\33[91m Fail\33[0m')
+            self.to_log('Reading config file {} - {}', 3, 'config.ini', 'Fail', c1='#CC0', c2='#C33')
         self.cfg.add_section('OPTIONS')     # OPTIONS CONFIG
         self.cfg.set('OPTIONS', 'SAVE_TO_FILE', config.get('OPTIONS', 'SAVE_TO_FILE', fallback='ON'))
         self.cfg.set('OPTIONS', 'FILE_RENEW', config.get('OPTIONS', 'FILE_RENEW', fallback='ON'))
@@ -330,7 +332,7 @@ class App(tk.Tk):
         self.cfg.set('LOGS', 'LVL', config.get('LOGS', 'LVL', fallback='3'))
         self.log_file = self.cfg.get('PATH', 'DIR') + 'Logs\\fssp_' + time.strftime("%d.%m.%y", time.localtime())+'.log'
         if not configparser.ConfigParser().read('config.ini'):
-            print('Creating config file\33[94m config.ini\33[0m with default settings')
+            self.to_log('Creating config file {} with default settings', 3, 'config.ini', c1='#FF0')
         self.save_cfg()
 
     def save_cfg(self):
@@ -338,30 +340,55 @@ class App(tk.Tk):
             self.cfg.write(cfg_file)
 
     # Записать сообщение в лог файл
-    def to_log(self, msg: str, deep_lvl: int = 3):
+    def to_log(self, msg: str, deep_lvl: int = 3, *args, **kwargs):
+        next_index = self.log_f.index('fin')
+        next_row_n = next_index.split('.')[0]
         if msg is False:
             msg = 'Try to put empty message in log'
             deep_lvl = 1
         if deep_lvl == 1:
             echo = '\x1b[31m[CRIT]\x1b[0m ' + msg
             msg = '[CRIT] ' + msg
+            lvl_color = '#F44'
         elif deep_lvl == 2:
-            echo = '\x1b[33m[ERR]\x1b[0m ' + msg
-            msg = '[ERR] ' + msg
+            echo = '\x1b[33m[FAIL]\x1b[0m ' + msg
+            msg = '[FAIL] ' + msg
+            lvl_color = '#F73'
         else:
             echo = '\x1b[94m[INFO]\x1b[0m ' + msg
             msg = '[INFO] ' + msg
+            lvl_color = '#37F'
         msg = time.strftime("%d.%m.%y %H:%M:%S", time.localtime()) + ' ' + msg
-        print(echo)
-        self.log_f.insert(tk.END, "\n{}".format(msg))
+        print(echo.format(*args))
+        msg_copy = msg
+        msg = msg.format(*args)
+        self.log_f.insert(next_index, "{}\n".format(msg))
         self.log_f.see(tk.END)
+        self.log_f.tag_add(next_index + 'time', next_index, next_row_n + '.17')
+        self.log_f.tag_config(next_index + 'time', foreground='#AA5')
+        self.log_f.tag_add(next_index + 'err_lvl', next_row_n + '.18', next_row_n + '.24')
+        self.log_f.tag_config(next_index + 'err_lvl', foreground=lvl_color)
+        if '{}' in msg_copy:
+            if kwargs:
+                colors = [str(c) for c in kwargs.values()]
+                a_lens = [len(str(string)) for string in args]
+                positions = [pos for pos, char in enumerate(msg_copy) if char == '{']
+                args_lens = 0
+                for i in range(len(positions)):
+                    start = positions[i] + args_lens
+                    end = next_row_n + '.' + str(start + a_lens[i])
+                    start = next_row_n + '.' + str(start)
+                    self.log_f.tag_add(start, start, end)
+                    self.log_f.tag_config(start, foreground=colors[i])
+                    args_lens += a_lens[i] - 2  # 2 символа это {}
+        '''
         if self.cfg['LOGS']['SAVE']:
             pass
-            '''
+
             if self.cfg['LOGS']['LVL'] >= deep_lvl:
                 with open(LOG_FILE_NAME, "a") as filo:
                     filo.write(msg + '\n')
-            '''
+        '''
 
 
 class MainF(tk.Frame):
