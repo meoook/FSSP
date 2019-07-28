@@ -453,7 +453,7 @@ chk_paths()
 #req_arr = sql_req('17.06.2019', znak='e')
 #req_arr = sql_req('22.07.2019', znak='eq')
 req_arr = sql_req()
-
+req_arr.append(("МИСОЧЕНКО", "АЛЕКСЕЙ", "СЕРГЕЕВИЧ", "19.01.1985"))
 
 ''' 
 Тут можно добавить новые запросы к req_arr:

@@ -141,6 +141,7 @@ class App(tk.Tk):
         self.log_f.pack(side='bottom', fill='both', padx=2, pady=2)
         self.log_f.mark_set('fin', '1.0')        # Load Config - надо после log_window для отображения ошибок
         self.get_config()
+        self.chk_paths()
         # Создаем верхний фрейм, куда будем пихать другие страницы\фреймы
         container = tk.Frame(self)
         container.pack(side='top', fill='both', expand=True, padx=2)
@@ -160,10 +161,82 @@ class App(tk.Tk):
         self.to_log('{} saFa {} xa {} 32a', 2, 'information', 'ok_OK', 'error', c1=Color.inf, c2=Color.ok, c3=Color.err)
         self.to_log('h {} xa {} zz {} asd', 1, 'hi_ligt', 'hl_ght1', 'hl_ght2', c1=Color.hl, c2=Color.hl1, c3=Color.hl2)
 
+    # Проверка всех путей like __init__ ; сделать через try - вдруг прав нет
+    def chk_paths(self):
+        cur_dir = os.getcwd() + '\\'
+        print("Application directory:", cur_dir)
+        # Проверием структуру файлов\папок
+        if self.cfg['OPTIONS']['SAVE_TO_FILE'] == 'ON' or self.cfg['LOGS']['SAVE'] == 'ON':
+            print('Checking folders structure...')
+        else:
+            print('No files will be used.\33[93m Echo mode.\33[0m')
+            return False
+        # Если логирование включено
+        if self.cfg['LOGS']['SAVE'] == 'ON':
+            if os.path.isdir('Logs'):   # Проверка папки с логами
+                self.to_log('Log folder {}Logs exist - {}', 3, cur_dir, 'OK', c1=Color.inf, c2=Color.ok)
+            else:
+                try:
+                    os.makedirs('Logs')
+                    self.to_log('Log folder {}Logs created - {}', 3, cur_dir, 'OK', c1=Color.inf, c2=Color.ok)
+                except Exception as e:
+                    self.to_log('Log folder {}Logs creating - {} Err:{}', 1,
+                                cur_dir, 'fail', e, c1=Color.inf, c2=Color.err, c3=Color.info)
+                    self.to_log('Set {} = {}', 1, 'LOG_TO_FILE', 'False', c1=Color.inf, c2=Color.fail)
+                    self.cfg.set('LOGS', 'SAVE', 'OFF')
+        if self.cfg['LOGS']['SAVE'] == 'ON':
+            if os.path.isfile(self.log_file):  # Проверка файла логов
+                print('Log file\33[93m', cur_dir + self.log_file, '\33[0mexist - \33[32mOK\33[0m')
+            else:
+                try:
+                    filo = open(self.log_file, "w")
+                    filo.write(time.strftime("%d.%m.%y %H:%M:%S", time.localtime()) +
+                               ' [INFO] Created file log ' + cur_dir + self.log_file + '\n')
+                    filo.close()
+                    print('Log file\33[93m', cur_dir + self.log_file, '\33[0mcreated - \33[32mOK\33[0m')
+                except Exception as e:
+                    print('Log file\33[93m', cur_dir + self.log_file, '\33[0mcreating - \33[91mfail.', e, '\33[0m')
+                    print('\33[91mSet LOG_TO_FILE = False\33[0m')
+                    self.cfg.set('LOGS', 'SAVE', 'OFF')
+        # Проверием папку для файла с результатами
+        if self.cfg['OPTIONS']['SAVE_TO_FILE'] == 'ON':
+            if os.path.isdir(self.cfg['PATH']['DIR']):  # Проверка основной папки
+                print('Main folder\33[93m', self.cfg['PATH']['DIR'], '\33[0mexist - \33[32mOK\33[0m')
+            else:
+                try:
+                    os.makedirs(self.cfg['PATH']['DIR'])
+                    print('Main folder\33[93m', self.cfg['PATH']['DIR'], '\33[0m created - \33[32mOK\33[0m')
+                except Exception as e:
+                    print('Main folder\33[93m', self.cfg['PATH']['DIR'], '\33[0m creating - \33[91mfail.', e, '\33[0m')
+                    print('\33[91mSet SAVE_RESULT = False\33[0m')
+                    self.cfg.set('OPTIONS', 'SAVE_TO_FILE', 'OFF')
+                    return False
+        else:
+            print('No files will be used.\33[93m Echo mode.\33[0m')
+            return False
+        # Создаем файл с результатами
+        if self.cfg['OPTIONS']['SAVE_TO_FILE'] == 'ON':
+            res_file_path = self.cfg['PATH']['DIR'] + self.cfg['PATH']['RES_FILENAME']
+            if not os.path.isfile(res_file_path) or self.cfg['OPTIONS']['FILE_RENEW'] == 'ON':
+                try:
+                    file_head = ['Время', 'Адрес', 'Участок', 'Реестр', 'Контрольная сумма', 'Комментарий',
+                                     'Задержан', 'Сумма штрафов']
+                    filo = open(res_file_path, "w")
+                    filo.write(";".join(file_head) + '\n')
+                    filo.close()
+                    print("Result file\33[93m", res_file_path, '\33[0mcreated - \33[32mOK\33[0m')
+                except IOError as e:
+                    print('Result file:\33[93m', res_file_path, '\33[0mcreating - \33[91mfail.', e, '\33[0m')
+                    print('\33[93mSet SAVE_RESULT = False\33[0m')
+                    self.cfg.set('OPTIONS', 'SAVE_TO_FILE', 'OFF')
+            else:
+                print('Result file\33[93m', res_file_path, '\33[0mexist - \33[32mOK\33[0m')
+        return True
+
     def init_connections(self):
         for x in self.threads:
             if x.is_alive():
-                self.to_log('Thread is busy. Try later.', 3)
+                self.to_log('Thread is busy. Try connect later.', 3)
                 return False
         self.to_log('Thread free. Trying connections...', 3)
         thr = threading.Thread(target=self.connections)  # Поскольку в процессе есть запрос к бд thread
@@ -279,6 +352,8 @@ class App(tk.Tk):
 
     def tool_bar_btns_chk(self):
         s_fssp, s_save = self.frames[MainF].get_state()
+        if self.cfg.get('OPTIONS', 'SAVE_TO_FILE') == 'OFF':
+            s_save = 'disabled'
         db_state = 'normal' if self.db.cur is not None else 'disabled'
         self.btn_s.config(state='normal')
         self.btn_sql.config(state=db_state)
@@ -348,7 +423,7 @@ class App(tk.Tk):
         self.cfg.add_section('LOGS')        # LOG CONFIG
         self.cfg.set('LOGS', 'SAVE', config.get('LOGS', 'SAVE', fallback='ON'))
         self.cfg.set('LOGS', 'LVL', config.get('LOGS', 'LVL', fallback='3'))
-        self.log_file = self.cfg.get('PATH', 'DIR') + 'Logs\\fssp_' + time.strftime("%d.%m.%y", time.localtime())+'.log'
+        self.log_file = 'Logs\\fssp_' + time.strftime("%d.%m.%y", time.localtime())+'.log'
         if not configparser.ConfigParser().read('config.ini'):
             self.to_log('Creating config file {} with default settings', 3, 'config.ini', c1=Color.info)
         self.save_cfg()
@@ -399,14 +474,10 @@ class App(tk.Tk):
                     self.log_f.tag_add(start, start, end)
                     self.log_f.tag_config(start, foreground=colors[i])
                     args_lens += a_lens[i] - 2  # 2 символа это {}
-        '''
-        if self.cfg['LOGS']['SAVE']:
-            pass
-
-            if self.cfg['LOGS']['LVL'] >= deep_lvl:
-                with open(LOG_FILE_NAME, "a") as filo:
+        if 'LOGS' in self.cfg.sections() and self.cfg.get('LOGS', 'SAVE') == 'ON':
+            if int(self.cfg.get('LOGS', 'LVL')) >= deep_lvl:
+                with open(self.log_file, "a") as filo:
                     filo.write(msg + '\n')
-        '''
 
 
 class MainF(tk.Frame):
