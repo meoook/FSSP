@@ -15,16 +15,6 @@ v0.4:   Adding MenuBar
 v0.3:
     1. Making GUI for application
 """
-'''
-TO DO - CREATE COLOR CLASS
-INFO    #59F
-FAIL    #F73
-CRIT    #F44
-
-OK      #FF0
-ERR     #44F
-INF		#EE4
-'''
 import configparser
 import time
 import re
@@ -35,22 +25,7 @@ import threading
 from tkinter import ttk
 from myCal import DateEntry, CalPopup
 from fssp import FSSP
-
-
-class Color:
-    time = '#AA5'
-    inf = '#CC0'
-    err = '#C33'
-    ok = '#3B3'
-
-    info = '#59F'
-    fail = '#F93'
-    crit = '#F00'
-
-    hl = '#FF0'
-    hl1 = '#F0F'
-    hl2 = '#3F3'
-    zero = '#FFF'
+from my_colors import Color
 
 
 class DataBase:
@@ -139,8 +114,7 @@ class App(tk.Tk):
         # Табло для отображения логов
         self.log_f = tk.Text(self, height=10, bg='#001', fg='#AAA', selectbackground='#118', padx=10)
         self.log_f.pack(side='bottom', fill='both', padx=2, pady=2)
-        self.log_f.mark_set('fin', '1.0')        # Load Config - надо после log_window для отображения ошибок
-        self.get_config()
+        self.log_f.mark_set('fin', '1.0')        # Делаем метку для прокрутки
         self.chk_paths()
         # Создаем верхний фрейм, куда будем пихать другие страницы\фреймы
         container = tk.Frame(self)
@@ -154,34 +128,36 @@ class App(tk.Tk):
         # При запуске инициализируем конфиг и показываем заглавную страницу
         self.threads = []
         self.show_frame(MainF)
-
+        '''
         self.to_log('COLOR TEST COLOR TEST', 1)
         self.to_log('hgf {} xa xa {} ad a', 3, 'time_TIME', 'Zero_zeRO', c1=Color.time, c2=Color.zero)
         self.to_log('oa {} dfa {} 44d a {} dad', 3, 'Crit', 'fail', 'info', c1=Color.crit, c2=Color.fail, c3=Color.info)
         self.to_log('{} saFa {} xa {} 32a', 2, 'information', 'ok_OK', 'error', c1=Color.inf, c2=Color.ok, c3=Color.err)
         self.to_log('h {} xa {} zz {} asd', 1, 'hi_ligt', 'hl_ght1', 'hl_ght2', c1=Color.hl, c2=Color.hl1, c3=Color.hl2)
+        '''
 
     # Проверка всех путей like __init__ ; сделать через try - вдруг прав нет
     def chk_paths(self):
         cur_dir = os.getcwd() + '\\'
         print("Application directory:", cur_dir)
+        self.get_config()
         # Проверием структуру файлов\папок
         if self.cfg['OPTIONS']['SAVE_TO_FILE'] == 'ON' or self.cfg['LOGS']['SAVE'] == 'ON':
-            print('Checking folders structure...')
+            self.to_log('Checking folders structure...')
         else:
-            print('No files will be used.\33[93m Echo mode.\33[0m')
+            self.to_log('No files will be used {}.', 3, 'Echo mode', c=Color.inf)
             return False
         # Если логирование включено
         if self.cfg['LOGS']['SAVE'] == 'ON':
             if os.path.isdir('Logs'):   # Проверка папки с логами
-                self.to_log('Log folder {}Logs exist - {}', 3, cur_dir, 'OK', c1=Color.inf, c2=Color.ok)
+                self.to_log('Log folder {} exist - {}', 3, cur_dir + 'Logs', 'OK', c1=Color.inf, c2=Color.ok)
             else:
                 try:
                     os.makedirs('Logs')
-                    self.to_log('Log folder {}Logs created - {}', 3, cur_dir, 'OK', c1=Color.inf, c2=Color.ok)
+                    self.to_log('Log folder {} created - {}', 3, cur_dir + 'Logs', 'OK', c1=Color.inf, c2=Color.ok)
                 except Exception as e:
-                    self.to_log('Log folder {}Logs creating - {} Err:{}', 1,
-                                cur_dir, 'fail', e, c1=Color.inf, c2=Color.err, c3=Color.info)
+                    self.to_log('Log folder {} creating - {} Err:{}', 1,
+                                cur_dir + 'Logs', 'fail', e, c1=Color.inf, c2=Color.err, c3=Color.info)
                     self.to_log('Set {} = {}', 1, 'LOG_TO_FILE', 'False', c1=Color.inf, c2=Color.fail)
                     self.cfg.set('LOGS', 'SAVE', 'OFF')
         if self.cfg['LOGS']['SAVE'] == 'ON':
@@ -198,7 +174,7 @@ class App(tk.Tk):
                     print('Log file\33[93m', cur_dir + self.log_file, '\33[0mcreating - \33[91mfail.', e, '\33[0m')
                     print('\33[91mSet LOG_TO_FILE = False\33[0m')
                     self.cfg.set('LOGS', 'SAVE', 'OFF')
-        # Проверием папку для файла с результатами
+        # Проверием папки для файла с результатами
         if self.cfg['OPTIONS']['SAVE_TO_FILE'] == 'ON':
             if os.path.isdir(self.cfg['PATH']['DIR']):  # Проверка основной папки
                 print('Main folder\33[93m', self.cfg['PATH']['DIR'], '\33[0mexist - \33[32mOK\33[0m')
@@ -425,7 +401,7 @@ class App(tk.Tk):
         self.cfg.set('LOGS', 'LVL', config.get('LOGS', 'LVL', fallback='3'))
         self.log_file = 'Logs\\fssp_' + time.strftime("%d.%m.%y", time.localtime())+'.log'
         if not configparser.ConfigParser().read('config.ini'):
-            self.to_log('Creating config file {} with default settings', 3, 'config.ini', c1=Color.info)
+            self.to_log('Creating config file {} with default settings', 3, 'config.ini', c1=Color.inf)
         self.save_cfg()
 
     def save_cfg(self):
@@ -452,7 +428,7 @@ class App(tk.Tk):
             msg = '[INFO] ' + msg
             lvl_color = Color.info
         msg = time.strftime("%d.%m.%y %H:%M:%S", time.localtime()) + ' ' + msg
-        print(echo.format(*args))
+        print(echo.format(*['\33[93m' + str(var) + '\33[0m' for var in args]))
         msg_copy = msg
         msg = msg.format(*args)
         self.log_f.insert(next_index, "{}\n".format(msg))

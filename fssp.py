@@ -1,7 +1,7 @@
 import requests
 import time
 import re
-#from MAIN_GUI import Color
+from my_colors import Color
 
 
 class FSSP:
@@ -11,12 +11,19 @@ class FSSP:
     для Юр.Лиц: ARRAY = [["OOO Качан", "Ул. Кочерышка"],["OOO Выходи", "Ул. Выходная"]]
     для ИП:     ARRAY = ["65094/16/77024-ИП", "65094/16/77024-ИП"]
     """
-    def __init__(self, token='k51UxJdRmtyZ', pause=15, url='https://api-ip.fssprus.ru/api/v1.0/'):
+    def __init__(self, token='k51UxJdRmtyZ', pause=15, url='https://api-ip.fssprus.ru/api/v1.0/', log_handler=None):
         super().__init__()
         self.token = token
         self.url = url
         self.pause = pause
         self.__result = False
+        # Прикручиваем LOGGER
+        if log_handler is None:
+            def log_pass(*args, **kwargs):
+                print('\33[91mFSSP class ERROR: Log handler not found. \33[93mMSG:\33[0m', args[0].format(args[2:]))
+            self.to_log = log_pass
+        else:
+            self.to_log = log_handler.to_log
 
     @staticmethod
     def __arr_check_doubles(arr):
@@ -45,11 +52,11 @@ class FSSP:
                                 to_del.append(y)
                         else:
                             to_del.append(y)
-        to_del.sort(reverse=True)
         arr_copy = arr[:]  # А то удаляется из глобального входящего массива
+        to_del.sort(reverse=True)
         for double in to_del:
             del arr_copy[double]
-        return arr_copy
+        return arr_copy, len(to_del)
 
     @property
     def arr(self):
@@ -57,11 +64,17 @@ class FSSP:
 
     @arr.setter
     def arr(self, array):
-        self.__result = False
-        arr = self.__arr_check_doubles(array)
-        if self.__uuid_get(arr):
-            if self.__uuid_wait_finish():
-                self.__uuid_result()
+        """ Проверяем входящий массив и сразу запускаем проверку на штрафы """
+        if isinstance(array, list):
+            self.__result = False
+            arr, doubles_count = self.__arr_check_doubles(array)
+            if doubles_count > 0:
+                self.to_log('Deleted doubles and errors from request. Count: {}', 2, doubles_count, c=Color.inf)
+            if self.__uuid_get(arr):
+                if self.__uuid_wait_finish():
+                    self.__uuid_result()
+        else:
+            self.to_log('Input type not valid: {}. Use "List" instead.', 2, type(array), c=Color.inf)
 
     @staticmethod
     def __response_status(response):
@@ -172,6 +185,8 @@ if __name__ == '__main__':
                "65094/16/77024-ИП", "1425628/16/77043-ИП", "65094/16/77024-ИП", "65094/16/77024-ИП"]
 
     app = FSSP('k51UxJdRmtyZ')
-    app.arr = req_arr
+    #app.arr = req_arr
+    app.arr = "hgjgjhgjgjmghjh"
+    print('test')
     print(app.arr)
 

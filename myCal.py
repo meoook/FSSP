@@ -7,10 +7,10 @@ Version: 1.01
 Author: meok
 Created: 14.07.2019
 Widget parameters:
-    date:           (dd.mm.yyyy) to set date
-    font_size:             (int) to change widget font size of PopUp window
-    not_current_is_nav:   (bool) to navigate with other(not current) month days
-    self.__root.date (parameter) from parent class to SET/GET date value
+    date:          (dd.mm.yyyy) to set date
+    font_size:            (int) to change widget font size of PopUp window
+    not_current_is_nav:  (bool) to navigate with other(not current) month days
+    obj.date        (parameter) from parent class to SET/GET date value
 Next version: Trying canvas for year transparent. Del LABEL_OPTIONS :)
     monthlist1 = [1,3,5,7,8,10,12] ## monthlist for months with 31 days.
     monthlist2 = [4,6,9,11] ## monthlist for months with 30 days.
@@ -27,8 +27,8 @@ LABEL_OPTIONS = {'activebackground': 'SystemButtonFace',    # BG color when stat
                  'borderwidth': 1,                  # Border width (in pixels)
                  'bd': 1,                           # Same as borderwidth
                  'font': 'TkDefaultFont',           # Font (Name, size, bold, italic)
-                 'cursor': 'hand2',                 # Курсор hand1/hand2/circle/clock/cross/dotbox/exchange/fleur/heart/
-                                     man/mouse/pirate/plus/shuttle/sizing/spider/spraycan/star/target/tcross/trek/watch/
+                 'cursor': 'hand2',                 # hand1/hand2/circle/clock/cross/dotbox/exchange/fleur/heart/man/
+                                     mouse/pirate/plus/shuttle/sizing/spider/spraycan/star/target/tcross/trek/watch/
                  'relief': 'raised',                # raised/sunken ridge/groove flat/solid
                  'textvariable': '',                # Link text with this var !-> tk.StringVar()
                  'text': 'This is a Label',         # Text for the label (if textvariable not set)
@@ -329,14 +329,15 @@ class DateEntry(tk.Label):      # tk.Frame as defaul but we need to translate Fo
         return [before, nxt]
 
     def _press(self, event):
+        """ Input state. Turn off input, then check the key and the cell (number of digits, max digits). """
         ww = event.widget                   # Current cell object
-        ww.config(state='readonly')         # Make cell readonly (no input allowed but visible cursor
+        ww.config(state='readonly')         # Make cell readonly. No input allowed.
         key = event.keysym                  # Input key (what key was pressed)
         v = ww.get()                        # Value inside the cell
         wth = ww['width']                   # Maximum digits in the cell
-        part = self.__day_part_detect(ww)   # Objects: before and next cells or False
-        cur_pos = ww.index('insert')        # Cursor position
+        cur_pos = ww.index('insert')        # Cursor position in the cell
         selected = ww.selection_present()   # If anything selected in the cell
+        part = self.__day_part_detect(ww)   # Objects part[0:1] = before and next cells or False
 
         if selected and key.isdigit():          # SELECTED
             ww.config(state='normal')
@@ -388,6 +389,7 @@ class DateEntry(tk.Label):      # tk.Frame as defaul but we need to translate Fo
             pass
 
     def _release(self, event):          # THIS DEF NEEDS REMAKE
+        """ Check cells after input """
         self.__day.config(state='normal')
         self.__month.config(state='normal')
         self.__year.config(state='normal')
@@ -410,7 +412,7 @@ class DateEntry(tk.Label):      # tk.Frame as defaul but we need to translate Fo
         if y > 999 and (1900 > y or y > 2100):      # Пока не будет 4 знака (999)
             self.__year.config(bg='#F77')
             #self.__year.delete(0, tk.END)
-            #self.__year.insert(0, '20' + str(y)[2:])
+            #self.__year.insert(0, '20' + str(y)[2:])   # Шаблон 20**
         else:
             self.__year.config(bg=self.hlbg)
 
@@ -424,11 +426,17 @@ if __name__ == '__main__':
     tt = DateEntry(root, font=('Times', 40), relief='solid', bd=0)
     tt.pack(side='top')
     app = CalPopup(tt)
+    # Test
+    aa = tk.Label(root, font=('Times', 40), text='xaxaxa', bd=1)
+    aa.pack(side='top', expand=True, fill='x')
+    app2 = CalPopup(aa)
+    # Error checker
     app.font_size = 'aa'
     app.font_size = 24
     app.not_current_is_nav = True
     app.date = '11.0x2.1115'
     app.date = 123
+    # ==============
     tt.date = '11.02.2215'
     root.mainloop()
 
