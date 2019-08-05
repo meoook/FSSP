@@ -115,7 +115,7 @@ class FSSP:
         self.to_log('Getting UUID for {} tasks...', 3, len(array))
         if self.__response_status(response):
             self.__uuid = response.json()['response']['task']
-            self.to_log('Success. UUID: {}', 3, response.json()['response']['task'])
+            self.to_log('UUID successfully taken {}', 3, response.json()['response']['task'])
             return True
         else:
             self.to_log('Error while getting UUID.', 2)
@@ -132,14 +132,15 @@ class FSSP:
                 if request_for == 'result':
                     return resp.json()['response']['result']  # When task finished - return json array with results
                 else:
-                    self.to_log('UUID {} Status: {}', 3, self.__uuid, status_arr[resp.json()['response']['status']])
+                    self.to_log('For UUID {} Requests done {} Status: {}', 3, self.__uuid,
+                                resp.json()['response']['progress'], status_arr[resp.json()['response']['status']])
                     return resp.json()['response']['status']
         self.to_log('UUID {} failure', 2, self.__uuid)
         return False
 
     def __uuid_wait_finish(self):
         """ Проверка пока не выполнится TASK или какая ошибка """
-        self.to_log('Getting result for UUID {}. Wait while finish!', 2, self.__uuid)
+        self.to_log('Getting result for UUID {}. Wait while finish!', 3, self.__uuid)
         while True:
             status = self.__uuid_req('status')
             if status is False or status > 2:
