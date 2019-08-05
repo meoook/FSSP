@@ -14,13 +14,13 @@ class Main(tk.Frame):
         toolbar = tk.Frame(bg='#d3d3d3', bd=2)
         toolbar.pack(side=tk.TOP, fill=tk.X)
 
-        self.add_img = tk.PhotoImage(file=r'.\img\add.png')
+        self.add_img = tk.PhotoImage(file=r'.\img\save.png')
         btn_open_dialog = tk.Button(toolbar, text='Добавить', command=self.open_dialog, bg="#f4f4f4", bd=1,
                                     compound=tk.TOP, image=self.add_img, width=80, height=55)
         btn_open_dialog.pack(side=tk.LEFT)
 #       btn_open_dialog.grid(row=1, column=1, ipady=0, ipadx=10)
 
-        self.edit_img = tk.PhotoImage(file=r'.\img\edit.png')
+        self.edit_img = tk.PhotoImage(file=r'.\img\home.png')
         btn_edit_dialog = tk.Button(toolbar, text='Редактировать', command=self.open_update_dialog, bg="#f4f4f4", bd=1,
                                     compound=tk.TOP, image=self.edit_img, width=80, height=55)
         btn_edit_dialog.pack(side=tk.LEFT, padx=3)

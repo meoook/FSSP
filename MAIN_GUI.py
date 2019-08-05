@@ -39,7 +39,7 @@ class DataBase:
                 print('DataBase class ERROR: Log handler not found.', *args)
             self.to_log = log_pass
         else:
-            self.to_log = log_handler.to_log
+            self.to_log = log_handler
 
         if db_connect:
             self.open(db_connect)
@@ -112,7 +112,7 @@ class App(tk.Tk):
         self.menu_bar()
         self.tool_bar()
         # Табло для отображения логов
-        self.log_f = tk.Text(self, height=10, bg='#001', fg='#AAA', selectbackground='#118', padx=10)
+        self.log_f = tk.Text(self, height=12, bg='#001', fg='#AAA', selectbackground='#118', padx=10)
         self.log_f.pack(side='bottom', fill='both', padx=2, pady=2)
         self.log_f.mark_set('fin', '1.0')        # Делаем метку для прокрутки
         self.chk_paths()
@@ -227,10 +227,11 @@ class App(tk.Tk):
         self.btn_fssp.config(state='disabled')
         self.btn_save.config(state='disabled')
         # Вызов класса ФССП
-        self.fssp = FSSP(self.cfg['FSSP.RU']['TOKEN'], self.cfg['FSSP.RU']['PAUSE'], self.cfg['FSSP.RU']['URL'])
+        self.fssp = FSSP(self.cfg['FSSP.RU']['TOKEN'], self.cfg['FSSP.RU']['PAUSE'], self.cfg['FSSP.RU']['URL'],
+                         self.to_log)
         # Вызов класса ДБ
         self.db = DataBase({'host': self.cfg['POSTGRES']['HOST'], 'dbname': self.cfg['POSTGRES']['DBNAME'],
-                            'user': self.cfg['POSTGRES']['USER'], 'pwd': self.cfg['POSTGRES']['PWD']}, self)
+                            'user': self.cfg['POSTGRES']['USER'], 'pwd': self.cfg['POSTGRES']['PWD']}, self.to_log)
         self.tool_bar_btns_chk()
 
     def menu_bar(self):
@@ -438,18 +439,17 @@ class App(tk.Tk):
         self.log_f.tag_add(next_index + 'err_lvl', next_row_n + '.18', next_row_n + '.24')
         self.log_f.tag_config(next_index + 'err_lvl', foreground=lvl_color)
         if '{}' in msg_copy:
-            if kwargs:
-                colors = [str(c) for c in kwargs.values()]
-                a_lens = [len(str(string)) for string in args]
-                positions = [pos for pos, char in enumerate(msg_copy) if char == '{']
-                args_lens = 0
-                for i in range(len(positions)):
-                    start = positions[i] + args_lens
-                    end = next_row_n + '.' + str(start + a_lens[i])
-                    start = next_row_n + '.' + str(start)
-                    self.log_f.tag_add(start, start, end)
-                    self.log_f.tag_config(start, foreground=colors[i])
-                    args_lens += a_lens[i] - 2  # 2 символа это {}
+            colors = [str(c) for c in kwargs.values()] if kwargs else []
+            a_lens = [len(str(string)) for string in args]
+            positions = [pos for pos, char in enumerate(msg_copy) if char == '{']
+            args_lens = 0
+            for i in range(len(positions)):
+                start = positions[i] + args_lens
+                end = next_row_n + '.' + str(start + a_lens[i])
+                start = next_row_n + '.' + str(start)
+                self.log_f.tag_add(start, start, end)
+                self.log_f.tag_config(start, foreground=colors[i] if i < len(colors) else Color.inf)
+                args_lens += a_lens[i] - 2  # 2 символа это {}
         if 'LOGS' in self.cfg.sections() and self.cfg.get('LOGS', 'SAVE') == 'ON':
             if int(self.cfg.get('LOGS', 'LVL')) >= deep_lvl:
                 with open(self.log_file, "a") as filo:
@@ -462,7 +462,7 @@ class MainF(tk.Frame):
         tk.Frame.__init__(self, parent)
         #self.config(bd=2, relief='groove')
 
-        self.tree = ttk.Treeview(self, height=12, show='headings', padding=0, selectmode='browse',
+        self.tree = ttk.Treeview(self, height=15, show='headings', padding=0, selectmode='browse',
                              column=('F', 'I', 'O', 'dr', 'dt', 'adr', 'court', 'rst', 'csum', 'comm', 'jail', 'sum'),
                              displaycolumns=('dt', 'adr', 'court', 'rst', 'csum', 'comm', 'jail', 'sum'))
         # Таблица для вывода результатов
