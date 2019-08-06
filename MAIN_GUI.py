@@ -3,6 +3,7 @@ Version: 0.81
 Author: meok
 
 CHANGE LOG
+TO DO: CHECK PATH
 v0.9.1: Colors in logger
 v0.9:   Adding logging
 v0.8:   Adding buttons behaviour when settings changes or connect DB or FSSP (threads)
@@ -114,7 +115,7 @@ class App(tk.Tk):
         # Табло для отображения логов
         self.log_f = tk.Text(self, height=12, bg='#001', fg='#AAA', selectbackground='#118', padx=10)
         self.log_f.pack(side='bottom', fill='both', padx=2, pady=2)
-        self.log_f.mark_set('fin', '1.0')        # Делаем метку для прокрутки
+        self.log_f.mark_set('fin', '1.0')        # Делаем метку для прокрутки\вставки
         self.chk_paths()
         # Создаем верхний фрейм, куда будем пихать другие страницы\фреймы
         container = tk.Frame(self)
@@ -139,8 +140,8 @@ class App(tk.Tk):
     # Проверка всех путей like __init__ ; сделать через try - вдруг прав нет
     def chk_paths(self):
         cur_dir = os.getcwd() + '\\'
-        print("Application directory:", cur_dir)
         self.get_config()
+        self.to_log("Application directory: {}", 3, cur_dir)
         # Проверием структуру файлов\папок
         if self.cfg['OPTIONS']['SAVE_TO_FILE'] == 'ON' or self.cfg['LOGS']['SAVE'] == 'ON':
             self.to_log('Checking folders structure...')
@@ -188,7 +189,7 @@ class App(tk.Tk):
                     self.cfg.set('OPTIONS', 'SAVE_TO_FILE', 'OFF')
                     return False
         else:
-            print('No files will be used.\33[93m Echo mode.\33[0m')
+            print('No save file will be used.\33[0m')
             return False
         # Создаем файл с результатами
         if self.cfg['OPTIONS']['SAVE_TO_FILE'] == 'ON':
@@ -411,6 +412,11 @@ class App(tk.Tk):
 
     # Записать сообщение в лог файл
     def to_log(self, msg: str, deep_lvl: int = 3, *args, **kwargs):
+        """ Log handler. Use it to log in screen, application and log file.
+            MSG: can be String or String with {} to input *args inside using msg.format
+            kwargs: use to set color for text inside {} in application window (log_frame) if unset = Color.inf
+            deep_lvl: it's MSG warning lvl. Possible: 1-Crit, 2-Fail, 3-All
+        """
         next_index = self.log_f.index('fin')
         next_row_n = next_index.split('.')[0]
         if msg is False:
@@ -452,8 +458,11 @@ class App(tk.Tk):
                 args_lens += a_lens[i] - 2  # 2 символа это {}
         if 'LOGS' in self.cfg.sections() and self.cfg.get('LOGS', 'SAVE') == 'ON':
             if int(self.cfg.get('LOGS', 'LVL')) >= deep_lvl:
-                with open(self.log_file, "a") as filo:
-                    filo.write(msg + '\n')
+                try:
+                    with open(self.log_file, "a") as filo:
+                        filo.write(msg + '\n')
+                except Exception as err:
+                    print(f'Log file error. {err}')
 
 
 class MainF(tk.Frame):
@@ -503,7 +512,7 @@ class MainF(tk.Frame):
             row = self.tree.set(row_id)
             for res in sum_array:
                 if res[0] == 1:  # Берем только физиков
-                    if 'sum' not in row.keys():  # Могут быть повторы, тем самым исключаем
+                    if 'sum' not in row.keys():  # Могут быть повторы. Условием исключаем
                         if res[1:5] == [row['F'], row['I'], row['O'], row['dr']]:
                             self.tree.set(row_id, 'sum', res[5])
 

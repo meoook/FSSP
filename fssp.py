@@ -7,6 +7,7 @@ from my_colors import Color
 class FSSP:
     """
     NEXT VERSION: ADD TOKEN CHECKER
+    NEXT VERSION: ADD THREADING
     для Физ:    ARRAY = [['СААПАПЕВ', 'ДЕНИС', 'АНДРЕЕВИЧ', '12.02.1994'],["АГИ", "РОМАН", "АШЕВИЧ", "11.02.1994"]]
     для Юр.Лиц: ARRAY = [["OOO Качан", "Ул. Кочерышка"],["OOO Выходи", "Ул. Выходная"]]
     для ИП:     ARRAY = ["65094/16/77024-ИП", "65094/16/77024-ИП"]
