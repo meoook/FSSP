@@ -19,84 +19,14 @@ v0.3:
 import configparser
 import time
 import re
-import psycopg2
 import os
 import tkinter as tk
 import threading
 from tkinter import ttk
 from myCal import DateEntry, CalPopup
+from my_database import DbLocal, DataBase
 from fssp import FSSP
 from my_colors import Color
-
-
-class DataBase:
-    """ Data base class. Only for FSSP_checker """
-    def __init__(self, db_connect=None, log_handler=None):
-        self.conn = None
-        self.cur = None
-        # Прикручиваем LOGGER
-        if log_handler is None:
-            def log_pass(*args, **kwargs):
-                print('DataBase class ERROR: Log handler not found.', *args)
-            self.to_log = log_pass
-        else:
-            self.to_log = log_handler
-
-        if db_connect:
-            self.open(db_connect)
-
-    def open(self, pa):     # Parameters
-        try:
-            self.conn = psycopg2.connect(host=pa['host'], database=pa['dbname'], user=pa['user'], password=pa['pwd'])
-            self.cur = self.conn.cursor()
-        except psycopg2.Error as error:
-            self.to_log('DB ERROR {}', 1, error, c1=Color.zero)
-            self.conn = None
-            self.cur = None
-        else:
-            self.to_log('DB connected - {}', 3, 'OK', c1=Color.ok)
-
-    # Делаем SELECT
-    def select_sql(self, date=None, znak=None):
-
-        # Home version
-        select = "SELECT upper(lastname), upper(firstname), upper(secondname), to_char(birthday, 'DD.MM.YYYY'), " \
-                 "to_char(creation_date, 'DD.MM.YYYY hh24:mi:ss'), court_adr, court_numb, reestr, " \
-                 "md5(concat(upper(lastname), upper(firstname), upper(secondname), to_char(birthday, 'DD.MM.YYYY'))) " \
-                 "FROM fssp as v WHERE creation_date::date "
-        # work version
-        '''
-        select = "SELECT " \
-                 "upper(v.last_name), upper(v.first_name), upper(v.patronymic), to_char(v.birthdate, 'DD.MM.YYYY'), " \
-                 "to_char(c.creation_date, 'DD.MM.YYYY hh24:mi:ss'), o.address, u.\"number\", " \
-                 "CASE WHEN mia_check_result = 1 THEN 'МВД' ELSE 'ФССП' END, " \
-                 "md5(concat(upper(v.last_name), upper(v.first_name), upper(v.patronymic), v.birthdate::date)) " \
-                 "FROM visitor_violation_checks AS c " \
-                 "RIGHT JOIN visitors AS v ON c.visitor_id = v.id " \
-                 "RIGHT JOIN court_objects AS o ON v.court_object_id = o.id " \
-                 "RIGHT JOIN court_stations AS u ON v.court_station_id = u.id " \
-                 "WHERE v.court_object_id not IN (173, 174) " \
-                 "AND (mia_check_result = 1 OR fssp_check_result = 1) " \
-                 "AND v.creation_date::date "
-        '''
-        select += ">= " if znak else "= "
-        select += "'" + date + "'" if date else "current_date"  # Нужна проверочка - что date соответсвует формату
-        select += " ORDER BY v.creation_date DESC"
-        self.cur.execute(select)
-        self.to_log('SQL request return {} rows. Conditions: {}'
-                    , 3, str(self.cur.rowcount), select[294:-29].upper(), c1=Color.inf, c2=Color.info)
-                    #, 3, str(self.cur.rowcount), select[632:-29].upper(), c1='#EE4', c2='#EE4')
-        return self.cur.fetchall()
-
-    # Закрываем соединение с БД - не понятно, работает ли :)
-    def close(self):
-        print('SQL close')
-        self.conn.commit()
-        self.cur.close()
-        self.conn.close()
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
 
 
 # Основной класс программы
