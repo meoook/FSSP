@@ -16,16 +16,16 @@ class FSSP:
         super().__init__()
         self.token = token
         self.url = url
-        self.pause = pause
+        self.pause = int(pause) if int(pause) < 5 else 5  # Minimum value for pause
         self.region = 77    # Default - Moscow
         self.__result = False
         # Прикручиваем LOGGER
         if log_handler is None:
             def log_pass(*args, **kwargs):
                 print('\33[91mFSSP class ERROR: Log handler not found. \33[93mMSG:\33[0m', args[0].format(*args[2:]))
-            self.to_log = log_pass
+            self.__to_log = log_pass
         else:
-            self.to_log = log_handler
+            self.__to_log = log_handler
 
     @staticmethod
     def __arr_check_doubles(arr):
@@ -71,22 +71,22 @@ class FSSP:
             self.__result = False
             arr, doubles_count = self.__arr_check_doubles(array)
             if doubles_count > 0:
-                self.to_log('Deleted doubles and errors from request. Count: {}', 3, doubles_count)
+                self.__to_log('Deleted doubles and errors from request. Count: {}', 3, doubles_count)
             if self.__uuid_get(arr):
                 if self.__uuid_wait_finish():
                     self.__uuid_result()
         else:
-            self.to_log('Input type not valid: {}. Use "List" instead.', 2, type(array))
+            self.__to_log('Input type not valid: {}. Use "List" instead.', 2, type(array))
 
     def __response_status(self, response):
         """ Проверка на статус ответа запроса """
         js_resp = response.json()
         if response.status_code != 200:  # Если ответ - ошибка
-            self.to_log("Request error, CODE: {} Exception: {}", 2, response.status_code, js_resp["exception"],
-                        c1=Color.inf, c2=Color.err)
+            self.__to_log("Request error, CODE: {} Exception: {}", 2, response.status_code, js_resp["exception"],
+                          c1=Color.inf, c2=Color.err)
             return False
         if js_resp['status'] != 'success':  # Если статус запроса - ошибка
-            self.to_log("Request error, Status: {} ", 2, js_resp['status'])
+            self.__to_log("Request error, Status: {} ", 2, js_resp['status'])
             return False
         return True
 
@@ -113,13 +113,13 @@ class FSSP:
 
         url = self.url + 'search/group'
         response = requests.post(url=url, json=reqst)
-        self.to_log('Getting UUID for {} tasks...', 3, len(array))
+        self.__to_log('Getting UUID for {} tasks...', 3, len(array))
         if self.__response_status(response):
             self.__uuid = response.json()['response']['task']
-            self.to_log('UUID successfully taken {}', 3, response.json()['response']['task'])
+            self.__to_log('UUID successfully taken {}', 3, response.json()['response']['task'])
             return True
         else:
-            self.to_log('Error while getting UUID.', 2)
+            self.__to_log('Error while getting UUID.', 2)
             return False
 
     def __uuid_req(self, request_for='result'):
@@ -133,15 +133,15 @@ class FSSP:
                 if request_for == 'result':
                     return resp.json()['response']['result']  # When task finished - return json array with results
                 else:
-                    self.to_log('For UUID {} Requests done {} Status: {}', 3, self.__uuid,
-                                resp.json()['response']['progress'], status_arr[resp.json()['response']['status']])
+                    self.__to_log('For UUID {} Requests done {} Status: {}', 3, self.__uuid,
+                                  resp.json()['response']['progress'], status_arr[resp.json()['response']['status']])
                     return resp.json()['response']['status']
-        self.to_log('UUID {} failure', 2, self.__uuid)
+        self.__to_log('UUID {} failure', 2, self.__uuid)
         return False
 
     def __uuid_wait_finish(self):
         """ Проверка пока не выполнится TASK или какая ошибка """
-        self.to_log('Getting result for UUID {}. Wait while finish!', 3, self.__uuid)
+        self.__to_log('Getting result for UUID {}. Wait while finish!', 3, self.__uuid)
         while True:
             status = self.__uuid_req('status')
             if status is False or status > 2:
@@ -149,10 +149,10 @@ class FSSP:
             elif status == 0:
                 return True
             elif status in (1, 2):
-                self.to_log('Next request after {} seconds. Wait...', 3, self.pause)
+                self.__to_log('Next request after {} seconds. Wait...', 3, self.pause)
                 time.sleep(int(self.pause))
             else:
-                self.to_log('UUID status error.: {}', 1, status)
+                self.__to_log('UUID status error.: {}', 1, status)
 
     def __uuid_result(self):
         """ Получив пложительный результат о выполнении taks выводим массив с результами. """
@@ -174,7 +174,7 @@ class FSSP:
             elif sub_task['query']['type'] == 3:
                 result.append([sub_task['query']['type'], sub_task['query']['params']['number'], calc])
         self.__result = result
-        self.to_log('FSSP Result ready', 3)
+        self.__to_log('FSSP Result ready', 3)
         return True
 
     @staticmethod

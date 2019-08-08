@@ -3,7 +3,7 @@ Version: 0.81
 Author: meok
 
 CHANGE LOG
-TO DO: CHECK PATH
+    WORK STOPPED COS THE OTHER FOUND THE OTHER WAY TO DO
 v0.9.1: Colors in logger
 v0.9:   Adding logging
 v0.8:   Adding buttons behaviour when settings changes or connect DB or FSSP (threads)
@@ -16,6 +16,7 @@ v0.4:   Adding MenuBar
 v0.3:
     1. Making GUI for application
 """
+import psycopg2
 import configparser
 import time
 import re
@@ -24,9 +25,81 @@ import tkinter as tk
 import threading
 from tkinter import ttk
 from myCal import DateEntry, CalPopup
-from my_database import DbLocal, DataBase
 from fssp import FSSP
 from my_colors import Color
+
+
+class DataBase:
+    """ Data base class. Only for FSSP_checker """
+
+    def __init__(self, db_connect=None, log_handler=None):
+        self.__conn = None
+        self.cur = None
+        # Прикручиваем LOGGER
+        if log_handler is None:
+            def log_pass(*args, **kwargs):
+                print('DataBase class ERROR: Log handler not found.', *args)
+
+            self.to_log = log_pass
+        else:
+            self.to_log = log_handler
+
+        if db_connect:
+            self.open(db_connect)
+
+    def open(self, pa):  # Parameters
+        try:
+            self.__conn = psycopg2.connect(host=pa['host'], database=pa['dbname'], user=pa['user'], password=pa['pwd'],
+                                           connect_timeout=1)
+            self.cur = self.__conn.cursor()
+        except psycopg2.Error as error:
+            self.to_log('DB ERROR {}', 1, str(error)[:-1], c1=Color.zero)
+            self.__conn = None
+            self.cur = None
+        else:
+            self.to_log('DB connected - {}', 3, 'OK', c1=Color.ok)
+
+    # Делаем SELECT
+    def select_sql(self, date=None, znak=None):
+
+        # Home version
+        select = "SELECT upper(lastname), upper(firstname), upper(secondname), to_char(birthday, 'DD.MM.YYYY'), " \
+                 "to_char(creation_date, 'DD.MM.YYYY hh24:mi:ss'), court_adr, court_numb, reestr, " \
+                 "md5(concat(upper(lastname), upper(firstname), upper(secondname), to_char(birthday, 'DD.MM.YYYY'))) " \
+                 "FROM fssp as v WHERE creation_date::date "
+        # work version
+        '''
+        select = "SELECT " \
+                 "upper(v.last_name), upper(v.first_name), upper(v.patronymic), to_char(v.birthdate, 'DD.MM.YYYY'), " \
+                 "to_char(c.creation_date, 'DD.MM.YYYY hh24:mi:ss'), o.address, u.\"number\", " \
+                 "CASE WHEN mia_check_result = 1 THEN 'МВД' ELSE 'ФССП' END, " \
+                 "md5(concat(upper(v.last_name), upper(v.first_name), upper(v.patronymic), v.birthdate::date)) " \
+                 "FROM visitor_violation_checks AS c " \
+                 "RIGHT JOIN visitors AS v ON c.visitor_id = v.id " \
+                 "RIGHT JOIN court_objects AS o ON v.court_object_id = o.id " \
+                 "RIGHT JOIN court_stations AS u ON v.court_station_id = u.id " \
+                 "WHERE v.court_object_id not IN (173, 174) " \
+                 "AND (mia_check_result = 1 OR fssp_check_result = 1) " \
+                 "AND v.creation_date::date "
+        '''
+        select += ">= " if znak else "= "
+        select += "'" + date + "'" if date else "current_date"  # Нужна проверочка - что date соответсвует формату
+        select += " ORDER BY v.creation_date DESC"
+        self.cur.execute(select)
+        self.to_log('SQL request return {} rows. Conditions: {}'
+                    , 3, str(self.cur.rowcount), select[294:-29].upper(), c1=Color.inf, c2=Color.info)
+        # , 3, str(self.cur.rowcount), select[632:-29].upper(), c1='#EE4', c2='#EE4')
+        return self.cur.fetchall()
+
+    # Закрываем соединение с БД - не понятно, работает ли :)
+    def close(self):
+        print('SQL close')
+        self.__conn.commit()
+        self.cur.close()
+        self.__conn.close()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
 
 
 # Основной класс программы
@@ -290,14 +363,14 @@ class App(tk.Tk):
         self.tool_bar_btns_chk()
 
     def get_fssp_data(self):
-        x = self
+        obj = self
         self.tool_bar_btns_off()
 
         def callback():
-            x.fssp.arr = x.frames[MainF].req_array()   # When set arr - the request to FSSP begins
-            if x.fssp.arr:
-                x.frames[MainF].insert_sum(x.fssp.arr)
-            x.tool_bar_btns_chk()
+            obj.fssp.arr = obj.frames[MainF].req_array()   # When set arr - the request to FSSP begins
+            if obj.fssp.arr:
+                obj.frames[MainF].insert_sum(obj.fssp.arr)
+            obj.tool_bar_btns_chk()
         thr = threading.Thread(target=callback)          # Поскольку в процессе есть sleep то пускаем в другой thread
         thr.start()
 
@@ -425,7 +498,7 @@ class MainF(tk.Frame):
 
         self.tree.pack(side='top', fill='both')
 
-    def view_records(self, arr=()):
+    def view_records(self, arr):
         [self.tree.delete(i) for i in self.tree.get_children()]
         [self.tree.insert('', 'end', values=row) for row in arr]
 
@@ -433,8 +506,7 @@ class MainF(tk.Frame):
         arr = []
         for row_id in self.tree.get_children():
             row = self.tree.set(row_id)
-            add = [row['F'], row['I'], row['O'], row['dr']]
-            arr.append(add)
+            arr.append([row['F'], row['I'], row['O'], row['dr']])
         return arr
 
     def insert_sum(self, sum_array):
