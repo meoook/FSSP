@@ -12,3 +12,7 @@ class Color:
     hl1 = '#F0F'
     hl2 = '#3F3'
     zero = '#FFF'
+
+    bg = '#6CF'
+    bg_hl = '#39F'
+    fg = '#003'

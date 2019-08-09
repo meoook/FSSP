@@ -116,7 +116,7 @@ class FSSP:
         self.__to_log('Getting UUID for {} tasks...', 3, len(array))
         if self.__response_status(response):
             self.__uuid = response.json()['response']['task']
-            self.__to_log('UUID successfully taken {}', 3, response.json()['response']['task'])
+            self.__to_log('Successfully taken UUID {}', 3, response.json()['response']['task'])
             return True
         else:
             self.__to_log('Error while getting UUID.', 2)

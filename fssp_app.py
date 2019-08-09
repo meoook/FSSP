@@ -29,6 +29,13 @@ from fssp import FSSP
 from my_colors import Color
 
 
+# TREE CLICK - UPDATE comment and jail. SAVE BUTTON. AND SEND MAIL BUTTON.
+# TREE CLICK - UPDATE comment and jail. SAVE BUTTON. AND SEND MAIL BUTTON.
+# TREE CLICK - UPDATE comment and jail. SAVE BUTTON. AND SEND MAIL BUTTON.
+# TREE CLICK - UPDATE comment and jail. SAVE BUTTON. AND SEND MAIL BUTTON.
+# TREE CLICK - UPDATE comment and jail. SAVE BUTTON. AND SEND MAIL BUTTON.
+# TREE CLICK - UPDATE comment and jail. SAVE BUTTON. AND SEND MAIL BUTTON.
+
 # Основной класс программы
 class App(tk.Tk):
     def __init__(self, *args, **kwargs):
@@ -37,133 +44,34 @@ class App(tk.Tk):
         self.title("Проверяльщик ФССП")  # Название
         self.geometry('+500+300')  # Смещение окна
         self.resizable(False, False)  # Растягивается
-        self.iconbitmap(self, default='.\\img\\ico.ico')  # Иконка приложения
+        self.iconbitmap(self, default='.\\img\\fssp\\ico.ico')  # Иконка приложения
         # Отображаемые модули\виджиты на главном фрейме
-        self.menu_bar()
-        self.tool_bar()
+        self.__menu_bar()
+        self.__tool_bar()
         # Табло для отображения логов
-        self.log_f = tk.Text(self, height=12, bg='#001', fg='#AAA', selectbackground='#118', padx=10)
-        self.log_f.pack(side='bottom', fill='both', padx=2, pady=2)
-        self.log_f.mark_set('fin', '1.0')  # Делаем метку для прокрутки\вставки
+        self.__log_f = tk.Text(self, height=12, bg='#001', fg='#AAA', selectbackground='#118', padx=10)
+        self.__log_f.pack(side='bottom', fill='both', padx=2, pady=2)
+        self.__log_f.mark_set('fin', '1.0')  # Делаем метку для прокрутки\вставки
         # Провереям конфиг и пути - (пути наверное не нужно)
-        self.chk_paths()
-        # self.db = DbLocal()
+        self._chk_paths()
         # Создаем верхний фрейм, куда будем пихать другие страницы\фреймы
         container = tk.Frame(self)
         container.pack(side='top', fill='both', expand=True, padx=2)
         # Загружаем фреймы
-        self.frames = {}
+        self.__frames = {}
         for F in (MainF, SettingsF):  # Список всех фреймов
             frame = F(container, self)
-            self.frames[F] = frame
+            self.__frames[F] = frame
             frame.grid(row=0, column=0, sticky='nsew')
         # При запуске инициализируем конфиг и показываем заглавную страницу
         self.__threads = []
         self.__show_frame(MainF)
+        #self.__frames[MainF].filter = {'uniq': True, 'start': '2019-08-05'}
+        self.__filter = {'uniq': False}
+        self.__use_filter()
 
-    # Проверка всех путей like __init__ ; сделать через try - вдруг прав нет
-    def chk_paths(self):
-        cur_dir = os.getcwd() + '\\'
-        self.get_config()
-        self.__to_log("Application directory: {}", 3, cur_dir)
-        # Проверием структуру файлов\папок
-        if self.cfg['OPTIONS']['SAVE_TO_FILE'] == 'ON' or self.cfg['LOGS']['SAVE'] == 'ON':
-            self.__to_log('Checking folders structure...')
-        else:
-            self.__to_log('No files will be used {}.', 3, 'Echo mode', c=Color.inf)
-            return False
-        # Если логирование включено
-        if self.cfg['LOGS']['SAVE'] == 'ON':
-            if os.path.isdir('Logs'):  # Проверка папки с логами
-                self.__to_log('Log folder {} exist - {}', 3, cur_dir + 'Logs', 'OK', c1=Color.inf, c2=Color.ok)
-            else:
-                try:
-                    os.makedirs('Logs')
-                    self.__to_log('Log folder {} created - {}', 3, cur_dir + 'Logs', 'OK', c1=Color.inf, c2=Color.ok)
-                except Exception as e:
-                    self.__to_log('Log folder {} creating - {} Err:{}', 1,
-                                  cur_dir + 'Logs', 'fail', e, c1=Color.inf, c2=Color.err, c3=Color.info)
-                    self.__to_log('Set {} = {}', 1, 'LOG_TO_FILE', 'False', c1=Color.inf, c2=Color.fail)
-                    self.cfg.set('LOGS', 'SAVE', 'OFF')
-        if self.cfg['LOGS']['SAVE'] == 'ON':
-            if os.path.isfile(self.log_file):  # Проверка файла логов
-                print('Log file\33[93m', cur_dir + self.log_file, '\33[0mexist - \33[32mOK\33[0m')
-            else:
-                try:
-                    filo = open(self.log_file, "w")
-                    filo.write(time.strftime("%d.%m.%y %H:%M:%S", time.localtime()) +
-                               ' [INFO] Created file log ' + cur_dir + self.log_file + '\n')
-                    filo.close()
-                    print('Log file\33[93m', cur_dir + self.log_file, '\33[0mcreated - \33[32mOK\33[0m')
-                except Exception as e:
-                    print('Log file\33[93m', cur_dir + self.log_file, '\33[0mcreating - \33[91mfail.', e, '\33[0m')
-                    print('\33[91mSet LOG_TO_FILE = False\33[0m')
-                    self.cfg.set('LOGS', 'SAVE', 'OFF')
-        # Проверием папки для файла с результатами
-        if self.cfg['OPTIONS']['SAVE_TO_FILE'] == 'ON':
-            if os.path.isdir(self.cfg['PATH']['DIR']):  # Проверка основной папки
-                print('Main folder\33[93m', self.cfg['PATH']['DIR'], '\33[0mexist - \33[32mOK\33[0m')
-            else:
-                try:
-                    os.makedirs(self.cfg['PATH']['DIR'])
-                    print('Main folder\33[93m', self.cfg['PATH']['DIR'], '\33[0m created - \33[32mOK\33[0m')
-                except Exception as e:
-                    print('Main folder\33[93m', self.cfg['PATH']['DIR'], '\33[0m creating - \33[91mfail.', e, '\33[0m')
-                    print('\33[91mSet SAVE_RESULT = False\33[0m')
-                    self.cfg.set('OPTIONS', 'SAVE_TO_FILE', 'OFF')
-                    return False
-        else:
-            print('No save file will be used.\33[0m')
-            return False
-        # Создаем файл с результатами
-        if self.cfg['OPTIONS']['SAVE_TO_FILE'] == 'ON':
-            res_file_path = self.cfg['PATH']['DIR'] + self.cfg['PATH']['RES_FILENAME']
-            if not os.path.isfile(res_file_path) or self.cfg['OPTIONS']['FILE_RENEW'] == 'ON':
-                try:
-                    file_head = ['Время', 'Адрес', 'Участок', 'Реестр', 'Контрольная сумма', 'Комментарий',
-                                 'Задержан', 'Сумма штрафов']
-                    filo = open(res_file_path, "w")
-                    filo.write(";".join(file_head) + '\n')
-                    filo.close()
-                    print("Result file\33[93m", res_file_path, '\33[0mcreated - \33[32mOK\33[0m')
-                except IOError as e:
-                    print('Result file:\33[93m', res_file_path, '\33[0mcreating - \33[91mfail.', e, '\33[0m')
-                    print('\33[93mSet SAVE_RESULT = False\33[0m')
-                    self.cfg.set('OPTIONS', 'SAVE_TO_FILE', 'OFF')
-            else:
-                print('Result file\33[93m', res_file_path, '\33[0mexist - \33[32mOK\33[0m')
-        return True
-
-    def init_connections(self):
-        for x in self.__threads:
-            if x.is_alive():
-                self.__to_log('Thread is busy. Try connect later.', 3)
-                return False
-        self.__to_log('Thread free. Trying connections...', 3)
-        thr = threading.Thread(target=self.connections)  # Поскольку в процессе есть запрос к бд thread
-        self.__threads.append(thr)
-        thr.start()
-        return True
-
-    def connections(self):
-        """ Connect to DB, Check FSSP, Check buttons - in other thread """
-        self.get_config()
-        db = DbLocal()
-        print(db.visits)
-        # Вызов класса ФССП
-        fssp = FSSP(self.cfg['FSSP.RU']['TOKEN'], self.cfg['FSSP.RU']['PAUSE'], self.cfg['FSSP.RU']['URL'],
-                         self.__to_log)
-        # Вызов класса ДБ
-        db_pg = DataBase({'host': self.cfg['POSTGRES']['HOST'], 'dbname': self.cfg['POSTGRES']['DBNAME'],
-                          'user': self.cfg['POSTGRES']['USER'], 'pwd': self.cfg['POSTGRES']['PWD']}, self.__to_log)
-        db.visits = db_pg.select_sql(db.visits[4])  # Select visits and then insert in local DB
-        db_pg.close()
-        fssp.arr = db.data  # Request to FSSP. db.data = array
-        for x in fssp.arr:
-            db.data = ('sum', *x[1:5], time.strftime("%Y-%m-%d", time.localtime()), x[5])
-        self.frames[MainF].view_records(db.table)
-
-    def menu_bar(self):
+    # GUI Element
+    def __menu_bar(self):
         menubar = tk.Menu(self)
         # File SubMenu
         file = tk.Menu(menubar, tearoff=0)
@@ -193,63 +101,236 @@ class App(tk.Tk):
         # Включаем для Object
         self.config(menu=menubar)
 
-    def tool_bar(self):
+    # GUI Element
+    def __tool_bar(self):
         font = ('helvetica', 27)  # "Arial 24"
         # ToolBar Frame
-        toolbar = tk.Frame(self, bg='#393', bd=1, relief='solid')
+        toolbar = tk.Frame(self, bg='#33C', bd=1, relief='solid')
         toolbar.pack(side='top', fill='both', padx=2)
         # ICONS
-        self.settings_ico = tk.PhotoImage(file='.\\img\\setting4.png').subsample(6)
-        self.home_ico = tk.PhotoImage(file='.\\img\\home.png').subsample(12)
-        self.sql_ico = tk.PhotoImage(file='.\\img\\sql2.png').subsample(15)
-        self.fssp_ico = tk.PhotoImage(file='.\\img\\fssp.png').subsample(8)
-        self.save_ico = tk.PhotoImage(file='.\\img\\save.png').subsample(12)
+        self.settings_ico = tk.PhotoImage(file='.\\img\\fssp\\settings.png')
+        self.home_ico = tk.PhotoImage(file='.\\img\\fssp\\home.png')
+        self.btn_r_ico = tk.PhotoImage(file='.\\img\\fssp\\btn_r.png')
+        self.btn_y_ico = tk.PhotoImage(file='.\\img\\fssp\\btn_y.png')
+        self.btn_g_ico = tk.PhotoImage(file='.\\img\\fssp\\btn_g.png')
+        self.one_ico = tk.PhotoImage(file='.\\img\\fssp\\one.png')
+        self.all_ico = tk.PhotoImage(file='.\\img\\fssp\\all.png')
+        self.search_ico = tk.PhotoImage(file='.\\img\\fssp\\search.png')
+        self.save_ico = tk.PhotoImage(file='.\\img\\fssp\\save.png')
+        self.mail_ico = tk.PhotoImage(file='.\\img\\fssp\\mail.png')
         ''' ToolBar elements '''
-        self.btn_s = tk.Button(toolbar, command=lambda: self.__tool_bar_fbtn(), image=self.settings_ico, bg='#393')
-        self.btn_s.pack(side='left', fill='both')
-        self.btn_s.config(highlightbackground='#4B4')
+        self.btn_s = tk.Button(toolbar, command=lambda: self.__tool_bar_btn('settings'), image=self.settings_ico,
+                               bg=Color.bg, bd=0, highlightbackground=Color.bg_hl)
+        self.btn_s.pack(side='left', fill='both', ipadx=3)
         self.bind_hover(self.btn_s)
 
-        select_label = tk.Label(toolbar, font=font, text='Найти нарушителей', bg='#beb', fg='#393')
-        select_label.pack(side='left', fill='both')
+        self.__busy = tk.Label(toolbar, image=self.btn_g_ico, bg=Color.bg)
+        self.__busy.pack(side='left', fill='both', ipadx=2, padx=1)
 
-        self.select_date = DateEntry(toolbar, font=font, bd=0, bg='#393', fg='#000', highlightbackground='#beb')
-        # self.select_date.config(relief='solid', bd=1)
-        self.select_date.pack(side='left', fill='both')
-        CalPopup(self.select_date)
+        self.btn_uniq = tk.Button(toolbar, command=lambda: self.__tool_bar_btn('one'), image=self.all_ico, bg=Color.bg,
+                                  bd=0, highlightbackground=Color.bg_hl)
+        self.btn_uniq.pack(side='left', fill='both', ipadx=5)
+        self.bind_hover(self.btn_uniq)
 
-        self.btn_save = tk.Button(toolbar, command=self.__save_data, image=self.save_ico, bg='#393', state='disabled')
+        tk.Label(toolbar, font=font, text='С', bg=Color.bg, fg=Color.fg).pack(side='left', fill='both', ipadx=2)
+        self.start_date = DateEntry(toolbar, font=font, bd=0, bg=Color.bg, fg='#000', highlightbackground='#beb')
+        self.start_date.pack(side='left', fill='both')
+        CalPopup(self.start_date, bd=0, bg=Color.bg, fg='#000', highlightbackground=Color.bg_hl)
+        self.start_date.date = time.strftime("%Y-%m-%d", time.localtime(time.time()-86400*30))
+
+        tk.Label(toolbar, font=font, text='По', bg=Color.bg, fg=Color.fg).pack(side='left', fill='both', ipadx=2)
+        self.end_date = DateEntry(toolbar, font=font, bd=0, bg=Color.bg, fg='#000', highlightbackground='#beb')
+        self.end_date.pack(side='left', fill='both')
+        CalPopup(self.end_date, bd=0, bg=Color.bg, fg='#000', highlightbackground=Color.bg_hl)
+        self.end_date.date = time.strftime("%Y-%m-%d", time.localtime(time.time()+86400))
+
+        self.btn_search = tk.Button(toolbar, command=lambda: self.__use_filter(), image=self.search_ico, bg=Color.bg,
+                                    bd=0, highlightbackground=Color.bg_hl)
+        self.btn_search.pack(side='left', fill='both', ipadx=5, padx=1)
+        self.bind_hover(self.btn_search)
+
+        self.btn_save = tk.Button(toolbar, command=self.__save_data, image=self.save_ico, bg=Color.bg, state='disabled',
+                                  bd=0, highlightbackground=Color.bg_hl)
         self.btn_save.pack(side='left', fill='both', ipadx=4)
+        self.bind_hover(self.btn_save)
 
-        author = tk.Label(toolbar, font=('Console', 8), text='Version: 0.82\nAuthor: meok', bg='#beb', fg='#000')
+        self.btn_mail = tk.Button(toolbar, command=self.__save_data, image=self.mail_ico, bg=Color.bg, state='disabled',
+                                  bd=0, highlightbackground=Color.bg_hl)
+        self.btn_mail.pack(side='left', fill='both', ipadx=4, padx=1)
+        self.bind_hover(self.btn_mail)
+
+        author = tk.Label(toolbar, font=('Console', 9, 'bold'), text='Version: 0.82 \nAuthor: meok', bg='#6CF')
         author.pack(side='left', fill='both', expand=True)
 
-    def __tool_bar_fbtn(self, where='home'):
-        if where == 'x':
-            self.btn_s.config(image=self.settings_ico)
-            self.btn_s.config(command=lambda: self.__tool_bar_fbtn('home'))
-            self.__show_frame(MainF)
-        else:
+    # GUI Element behaviour
+    def __tool_bar_btn(self, where=None):
+        if where == 'settings':
             self.btn_s.config(image=self.home_ico)
-            self.btn_s.config(command=lambda: self.__tool_bar_fbtn('x'))
+            self.btn_s.config(command=lambda: self.__tool_bar_btn('home'))
             self.__show_frame(SettingsF)
+        elif where == 'home':
+            self.btn_s.config(image=self.settings_ico)
+            self.btn_s.config(command=lambda: self.__tool_bar_btn('settings'))
+            self.__show_frame(MainF)
+        elif where == 'one':
+            self.btn_uniq.config(image=self.one_ico)
+            self.btn_uniq.config(command=lambda: self.__tool_bar_btn('all'))
+            self.__filter['uniq'] = True
+            self.__use_filter()
+        elif where == 'all':
+            self.btn_uniq.config(image=self.all_ico)
+            self.btn_uniq.config(command=lambda: self.__tool_bar_btn('one'))
+            self.__filter['uniq'] = False
+            self.__use_filter()
 
-    def __show_frame(self, context):  # Вывод на передний план фрейма
-        frame = self.frames[context]
-        frame.tkraise()
-        self.init_connections()
+    def __use_filter(self):
+        self.__filter['start'] = self.start_date.date
+        self.__filter['end'] = self.end_date.date
+        print(self.__filter)
+        self.__frames[MainF].filter = self.__filter
+
+    # Проверка всех путей like __init__ ; переделать под каждый файл
+    def _chk_paths(self, path_type='all'):
+        cur_dir = os.getcwd() + '\\'
+        self._get_config()
+
+        def logs(obj):
+            if obj.cfg['LOGS']['SAVE'] == 'ON':    # Если логирование включено
+                if os.path.isdir('Logs'):          # Проверка папки с логами
+                    obj._to_log('Log folder {} exist - {}', 3, cur_dir + 'Logs', 'OK', c1=Color.inf, c2=Color.ok)
+                else:
+                    try:
+                        os.makedirs('Logs')
+                        obj._to_log('Log folder {} created - {}', 3, cur_dir + 'Logs', 'OK', c1=Color.inf, c2=Color.ok)
+                    except Exception as e:
+                        obj._to_log('Log folder {} creating - {} Err:{}', 1,
+                                     cur_dir + 'Logs', 'fail', e, c1=Color.inf, c2=Color.err, c3=Color.info)
+                        obj._to_log('Set {} = {}', 1, 'LOG_TO_FILE', 'False', c1=Color.inf, c2=Color.fail)
+                        return False
+            if os.path.isfile(obj.log_file):   # Проверка файла логов
+                print('Log file\33[93m', cur_dir + obj.log_file, '\33[0mexist - \33[32mOK\33[0m')
+                return True
+            else:
+                try:
+                    filo = open(obj.log_file, "w")
+                    filo.write(time.strftime("%d.%m.%Y %H:%M:%S", time.localtime()) +
+                               ' [INFO] Created file log ' + cur_dir + obj.log_file + '\n')
+                    filo.close()
+                    print('Log file\33[93m', cur_dir + obj.log_file, '\33[0mcreated - \33[32mOK\33[0m')
+                except Exception as e:
+                    print('Log file\33[93m', cur_dir + obj.log_file, '\33[0mcreating - \33[91mfail.', e, '\33[0m')
+                    print('\33[91mSet LOG_TO_FILE = False\33[0m')
+                    return False
+                else:
+                    return True
+
+        def result_dir(obj):    # Проверием папки для файла с результатами
+            if self.cfg['OPTIONS']['SAVE_TO_FILE'] == 'ON':
+                if os.path.isdir(obj.cfg['PATH']['DIR']):  # Проверка основной папки
+                    print('Main folder\33[93m', obj.cfg['PATH']['DIR'], '\33[0mexist - \33[32mOK\33[0m')
+                else:
+                    try:
+                        os.makedirs(obj.cfg['PATH']['DIR'])
+                        print('Main folder\33[93m', obj.cfg['PATH']['DIR'], '\33[0m created - \33[32mOK\33[0m')
+                    except Exception as e:
+                        print('Main folder\33[93m', obj.cfg['PATH']['DIR'], '\33[0m creating - \33[91mfail.', e,
+                              '\33[0m')
+                        print('\33[91mSet SAVE_RESULT = False\33[0m')
+                        obj.cfg.set('OPTIONS', 'SAVE_TO_FILE', 'OFF')
+                        return False
+                    else:
+                        return True
+            else:
+                print('No save file will be used.\33[0m')
+                return False
+
+        def result(obj):    # Создаем файл с результатами
+            if result_dir(obj) and obj.cfg['OPTIONS']['SAVE_TO_FILE'] == 'ON':
+                res_file_path = obj.cfg['PATH']['DIR'] + obj.cfg['PATH']['RES_FILENAME']
+                if not os.path.isfile(res_file_path) or obj.cfg['OPTIONS']['FILE_RENEW'] == 'ON':
+                    try:
+                        file_head = ['Время', 'Адрес', 'Участок', 'Реестр', 'Контрольная сумма', 'Комментарий',
+                                     'Задержан', 'Сумма штрафов']
+                        filo = open(res_file_path, "w")
+                        filo.write(";".join(file_head) + '\n')
+                        filo.close()
+                        print("Result file\33[93m", res_file_path, '\33[0mcreated - \33[32mOK\33[0m')
+                    except IOError as e:
+                        print('Result file:\33[93m', res_file_path, '\33[0mcreating - \33[91mfail.', e, '\33[0m')
+                        print('\33[93mSet SAVE_RESULT = False\33[0m')
+                        obj.cfg.set('OPTIONS', 'SAVE_TO_FILE', 'OFF')
+                        return False
+                    else:
+                        return True
+                else:
+                    print('Result file\33[93m', res_file_path, '\33[0mexist - \33[32mOK\33[0m')
+            return True
+
+        if path_type == 'all':
+            self._to_log("Application directory: {}", 3, cur_dir)
+            # Проверием структуру файлов\папок
+            if self.cfg['OPTIONS']['SAVE_TO_FILE'] == 'ON' or self.cfg['LOGS']['SAVE'] == 'ON':
+                self._to_log('Checking folders structure...')
+                return True if (logs(self) and result_dir(self)) else False
+            else:
+                self._to_log('No files will be used {}.', 3, 'Echo mode', c=Color.inf)
+                return True
+        elif path_type == 'logs':
+            return True if logs(self) else False
+        elif path_type == 'r_dir':
+            return True if result_dir(self) else False
+        elif path_type == 'result':
+            return True if result(self) else False
+        return False
+
+    def __init_connections(self):
+        """ This function run 'connections' in other thread cos getting FSSP data sometimes needs a lot of time. """
+        for x in self.__threads:
+            if x.is_alive():
+                self._to_log('Already connecting. Wait while finish.', 3)  # Thread busy
+                return False
+        self._to_log('Trying connections...', 3)  # Thread free
+        thr = threading.Thread(target=self.__connections)  # Поскольку в процессе есть запрос к бд thread
+        self.__threads.append(thr)
+        thr.start()
+        return True
+
+    def __connections(self):
+        """ Update data function. First get last update time. Then we request PG_DB for new visits.
+            Then get FSSP data. When busy - turn red light on GUI. """
+        self._get_config()
+        self.__busy.config(image=self.btn_y_ico)  # Turn light - BLUE
+        db = DbLocal('fssp', self._to_log)
+        db_pg = DataBase({'host': self.cfg['POSTGRES']['HOST'], 'dbname': self.cfg['POSTGRES']['DBNAME'],
+                          'user': self.cfg['POSTGRES']['USER'], 'pwd': self.cfg['POSTGRES']['PWD']}, self._to_log)
+        fssp = FSSP(self.cfg['FSSP.RU']['TOKEN'], self.cfg['FSSP.RU']['PAUSE'], self.cfg['FSSP.RU']['URL'],
+                    self._to_log)
+        print(db.visits)
+        db.visits = db_pg.select_sql(db.visits[4])  # Select visits and then insert in local DB
+        db_pg.close()
+        if db.data:                 # New users from visits
+            self.__busy.config(image=self.btn_r_ico)  # Turn light - RED
+            fssp.arr = db.data      # Request FSSP with new users.
+            for x in fssp.arr:      # Insert new sums for users\visits
+                db.data = ('sum', *x[1:5], time.strftime("%Y-%m-%d", time.localtime()), x[5])
+        self.__busy.config(image=self.btn_g_ico)  # Turn light - GREEN
+        self.__frames[MainF].view_records()
 
     def __save_data(self):
         print('SAVING ))')
         pass
 
-    def get_config(self):
+    def __show_frame(self, context):  # Вывод на передний план фрейма
+        self.__frames[context].tkraise()
+        self.__init_connections()
+
+    def _get_config(self):   # Used in SettingsF class
         self.cfg = configparser.ConfigParser()
         config = configparser.ConfigParser()
         if config.read('config.ini'):
-            self.__to_log('Reading config file {} - {}', 3, 'config.ini', 'OK', c1=Color.inf, c2=Color.ok)
+            self._to_log('Reading config file {} - {}', 3, 'config.ini', 'OK', c1=Color.inf, c2=Color.ok)
         else:
-            self.__to_log('Reading config file {} - {}', 1, 'config.ini', 'Fail', c1=Color.inf, c2=Color.fail)
+            self._to_log('Reading config file {} - {}', 1, 'config.ini', 'Fail', c1=Color.inf, c2=Color.fail)
         self.cfg.add_section('OPTIONS')  # OPTIONS CONFIG
         self.cfg.set('OPTIONS', 'SAVE_TO_FILE', config.get('OPTIONS', 'SAVE_TO_FILE', fallback='ON'))
         self.cfg.set('OPTIONS', 'FILE_RENEW', config.get('OPTIONS', 'FILE_RENEW', fallback='ON'))
@@ -271,21 +352,20 @@ class App(tk.Tk):
         self.cfg.set('LOGS', 'LVL', config.get('LOGS', 'LVL', fallback='3'))
         self.log_file = 'Logs\\fssp_' + time.strftime("%d.%m.%y", time.localtime()) + '.log'
         if not configparser.ConfigParser().read('config.ini'):
-            self.__to_log('Creating config file {} with default settings', 3, 'config.ini', c1=Color.inf)
-        self.save_cfg()
+            self._to_log('Creating config file {} with default settings', 3, 'config.ini', c1=Color.inf)
+        self._save_cfg()
 
-    def save_cfg(self):
+    def _save_cfg(self):
         with open('config.ini', 'w') as cfg_file:
             self.cfg.write(cfg_file)
 
-    # Записать сообщение в лог файл
-    def __to_log(self, msg: str, deep_lvl: int = 3, *args, **kwargs):
+    def _to_log(self, msg: str, deep_lvl: int = 3, *args, **kwargs):
         """ Log handler. Use it to log in screen, application and log file.
             MSG: can be String or String with {} to input *args inside using msg.format
             kwargs: use to set color for text inside {} in application window (log_frame) if unset = Color.inf
             deep_lvl: it's MSG warning lvl. Possible: 1-Crit, 2-Fail, 3-All
         """
-        next_index = self.log_f.index('fin')
+        next_index = self.__log_f.index('fin')
         next_row_n = next_index.split('.')[0]
         if msg is False:
             msg = 'Try to put empty message in log'
@@ -302,16 +382,16 @@ class App(tk.Tk):
             echo = '\x1b[94m[INFO]\x1b[0m ' + msg
             msg = '[INFO] ' + msg
             lvl_color = Color.info
-        msg = time.strftime("%d.%m.%y %H:%M:%S", time.localtime()) + ' ' + msg
+        msg = time.strftime("%d.%m.%Y %H:%M:%S", time.localtime()) + ' ' + msg
         print(echo.format(*['\33[93m' + str(var) + '\33[0m' for var in args]))
         msg_copy = msg
         msg = msg.format(*args)
-        self.log_f.insert(next_index, "{}\n".format(msg))
-        self.log_f.see(tk.END)
-        self.log_f.tag_add(next_index + 'time', next_index, next_row_n + '.17')
-        self.log_f.tag_config(next_index + 'time', foreground='#AA5')
-        self.log_f.tag_add(next_index + 'err_lvl', next_row_n + '.18', next_row_n + '.24')
-        self.log_f.tag_config(next_index + 'err_lvl', foreground=lvl_color)
+        self.__log_f.insert(next_index, "{}\n".format(msg))
+        self.__log_f.see(tk.END)
+        self.__log_f.tag_add(next_index + 'time', next_index, next_row_n + '.19')
+        self.__log_f.tag_config(next_index + 'time', foreground='#AA5')
+        self.__log_f.tag_add(next_index + 'err_lvl', next_row_n + '.20', next_row_n + '.26')
+        self.__log_f.tag_config(next_index + 'err_lvl', foreground=lvl_color)
         if '{}' in msg_copy:
             colors = [str(c) for c in kwargs.values()] if kwargs else []
             a_lens = [len(str(string)) for string in args]
@@ -321,8 +401,8 @@ class App(tk.Tk):
                 start = positions[i] + args_lens
                 end = next_row_n + '.' + str(start + a_lens[i])
                 start = next_row_n + '.' + str(start)
-                self.log_f.tag_add(start, start, end)
-                self.log_f.tag_config(start, foreground=colors[i] if i < len(colors) else Color.inf)
+                self.__log_f.tag_add(start, start, end)
+                self.__log_f.tag_config(start, foreground=colors[i] if i < len(colors) else Color.inf)
                 args_lens += a_lens[i] - 2  # 2 символа это {}
         if 'LOGS' in self.cfg.sections() and self.cfg.get('LOGS', 'SAVE') == 'ON':
             if int(self.cfg.get('LOGS', 'LVL')) >= deep_lvl:
@@ -346,34 +426,46 @@ class MainF(tk.Frame):
         tk.Frame.__init__(self, parent)
         # self.config(bd=2, relief='groove')
 
-        self.tree = ttk.Treeview(self, height=15, show='headings', padding=0, selectmode='browse',
-                                 column=(
+        self.__tree = ttk.Treeview(self, height=15, show='headings', padding=0, selectmode='browse',
+                                   column=(
                                  'F', 'I', 'O', 'dr', 'dt', 'adr', 'court', 'rst', 'csum', 'comm', 'jail', 'sum'),
-                                 displaycolumns=('dt', 'adr', 'court', 'rst', 'csum', 'comm', 'jail', 'sum'))
+                                   displaycolumns=('dt', 'adr', 'court', 'rst', 'csum', 'comm', 'jail', 'sum'))
         # Таблица для вывода результатов
-        self.tree.column('dt', width=110, anchor=tk.CENTER)
-        self.tree.column('adr', width=250, anchor=tk.W)
-        self.tree.column('court', width=55, anchor=tk.CENTER)
-        self.tree.column('rst', width=50, anchor=tk.CENTER)
-        self.tree.column('csum', width=130, anchor=tk.W)
-        self.tree.column('comm', width=250, anchor=tk.CENTER, stretch=True)
-        self.tree.column('jail', width=80, anchor=tk.CENTER)
-        self.tree.column('sum', width=110, anchor=tk.CENTER)
+        self.__tree.column('dt', width=115, anchor=tk.CENTER)
+        self.__tree.column('adr', width=245, anchor=tk.W)
+        self.__tree.column('court', width=55, anchor=tk.CENTER)
+        self.__tree.column('rst', width=50, anchor=tk.CENTER)
+        self.__tree.column('csum', width=130, anchor=tk.W)
+        self.__tree.column('comm', width=250, anchor=tk.W, stretch=True)
+        self.__tree.column('jail', width=80, anchor=tk.CENTER)
+        self.__tree.column('sum', width=110, anchor=tk.CENTER)
 
-        self.tree.heading('dt', text='Время')
-        self.tree.heading('adr', text='Адрес')
-        self.tree.heading('court', text='Участок')
-        self.tree.heading('rst', text='Реестр')
-        self.tree.heading('csum', text='Контрольная сумма')
-        self.tree.heading('comm', text='Комментарий')
-        self.tree.heading('jail', text='Задержаний')
-        self.tree.heading('sum', text='Сумма взысканий')
+        self.__tree.heading('dt', text='Время')
+        self.__tree.heading('adr', text='Адрес')
+        self.__tree.heading('court', text='Участок')
+        self.__tree.heading('rst', text='Реестр')
+        self.__tree.heading('csum', text='Контрольная сумма')
+        self.__tree.heading('comm', text='Комментарий')
+        self.__tree.heading('jail', text='Задержаний')
+        self.__tree.heading('sum', text='Сумма взысканий')
 
-        self.tree.pack(side='top', fill='both')
+        self.__tree.pack(side='top', fill='both')
 
-    def view_records(self, arr):
-        [self.tree.delete(i) for i in self.tree.get_children()]
-        [self.tree.insert('', 'end', values=row) for row in arr]
+        self.__db = DbLocal('fssp', controller._to_log)
+        #self.filter = {'uniq': False}
+
+    def view_records(self):
+        [self.__tree.delete(i) for i in self.__tree.get_children()]
+        [self.__tree.insert('', 'end', values=row) for row in self.__db.table]
+
+    @property
+    def filter(self):
+        return True
+
+    @filter.setter
+    def filter(self, conditions):
+        self.__db.table = conditions
+        self.view_records()
 
 
 class SettingsF(tk.Frame):
@@ -500,7 +592,7 @@ class SettingsF(tk.Frame):
         self.__app.cfg.set('POSTGRES', 'USER', self.__o_pg_user.get())
         self.__app.cfg.set('POSTGRES', 'PWD', self.__o_pg_pass.get())
 
-        self.__app.save_cfg()
+        self.__app._save_cfg()
 
     def __change(self, var, typo='b'):
         v = var.get()
@@ -517,8 +609,8 @@ class SettingsF(tk.Frame):
         self.__app.cfg.remove_section('POSTGRES')
         self.__app.cfg.remove_section('FSSP.RU')
         self.__app.cfg.remove_section('LOGS')
-        self.__app.save_cfg()
-        self.__app.get_config()
+        self.__app._save_cfg()
+        self.__app._get_config()
         self.__settings_get()
         self.__trace()
 

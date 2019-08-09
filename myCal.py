@@ -58,8 +58,10 @@ class CalPopup(tk.Label):   # Class polymorph from tk.Label
                      'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь')
     __week_names = ('Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс')
 
-    def __init__(self, master):
+    def __init__(self, master, *args, **kwargs):
         super().__init__(master)
+        for a in kwargs:
+            print(a)
         self.__main = master
         self.__root = self.__main.winfo_toplevel()   # Root window
         # self.__root.wm_attributes('-transparentcolor', self.__root['bg'])     # for transparent root (works bad)
@@ -68,16 +70,15 @@ class CalPopup(tk.Label):   # Class polymorph from tk.Label
         self.__curr_m_name = tk.StringVar()
         self.__curr_y_name = tk.StringVar()
         # Button for popup
-        self.cal_ico = tk.PhotoImage(file='.\\img\\cal_ico.png').subsample(15)
-        btn = tk.Button(self.__main, font=self.__main['font'], command=self.__popup,
-                       cursor='hand2', highlightbackground='#4B4', bg='#393', fg='#AEA', image=self.cal_ico)
+        self.cal_ico = tk.PhotoImage(file='.\\img\\cal.png')
+        btn = tk.Button(self.__main, command=self.__popup, cursor='hand2', image=self.cal_ico, **kwargs)
+        btn.pack(side='left', fill='both', padx=1, ipadx=5)
         #btn.config(text='▦')    # ⌨
-        btn.pack(side='left', fill='both', padx=3, ipadx=5)
         # Bindings
         self.__bind_hover(btn)
         print('\33[94m====== CALENDAR CLASS ======\33[0m')
         # Today & Selected
-        self.date = time.strftime("%d.%m.%Y", time.localtime())
+        self.date = time.strftime("%Y-%m-%d", time.localtime())
         self.__main.date = self.date
         # Setting up font size
         self.font_size = 14
@@ -86,13 +87,13 @@ class CalPopup(tk.Label):   # Class polymorph from tk.Label
 
     @property
     def date(self):
-        return '{:02d}.{:02d}.{}'.format(*self.__sel)   # Year no need to be format
+        return '{}-{:02d}-{:02d}'.format(*self.__sel)   # Year no need to be format
 
     @date.setter
     def date(self, value):
         try:
-            time.strptime(value, '%d.%m.%Y')
-            self.__sel = [int(n) for n in value.split('.')]
+            time.strptime(value, '%Y-%m-%d')
+            self.__sel = [int(n) for n in value.split('-')]
         except ValueError:
             print('\33[91mValue\33[93m', value, '\33[91merror. Must be a date format:\33[93m dd.mm.yyyy\33[0m')
         except TypeError:
@@ -135,7 +136,7 @@ class CalPopup(tk.Label):   # Class polymorph from tk.Label
     def __popup(self):
         top = tk.Toplevel()
         self.date = self.__main.date        # Integration with other classes
-        self.__curr = self.__sel[1:3]       # Del & uncomment in date.setter to continue from month we stop
+        self.__curr = self.__sel[0:2]       # Del & uncomment in date.setter to continue from month we stop
         x = self.__main.winfo_rootx()
         y = self.__main.winfo_rooty() + self.__main.winfo_height()
         top.geometry('+{}+{}'.format(x, y))    # Смещение окна
@@ -176,9 +177,9 @@ class CalPopup(tk.Label):   # Class polymorph from tk.Label
 
     # Insert values in matrix
     def __matrix_change(self):
-        self.__curr_m_name.set(self.__month_names[self.__curr[0]])
-        self.__curr_y_name.set(self.__curr[1])
-        cal_array = list(calendar.TextCalendar(firstweekday=0).itermonthdays4(self.__curr[1], self.__curr[0]))
+        self.__curr_m_name.set(self.__month_names[self.__curr[1]])
+        self.__curr_y_name.set(self.__curr[0])
+        cal_array = list(calendar.TextCalendar(firstweekday=0).itermonthdays4(self.__curr[0], self.__curr[1]))
         row = 0
         for i, day in enumerate(cal_array):
             self.__day_vars[i].set(day[2])
@@ -190,7 +191,7 @@ class CalPopup(tk.Label):   # Class polymorph from tk.Label
             elif i > 20 and day[2] < 7:
                 what_month = '>>>'
             # Set Label style
-            state = 'active' if self.__sel == [day[2], day[1], day[0]] else 'normal'
+            state = 'active' if self.__sel == [day[0], day[1], day[2]] else 'normal'
             cell, style = self.__cells[i], self.__get_cell_style(holiday, what_month)
             cell.config(style, state=state)
             row = row + 1 if day[3] == 0 else row
@@ -217,7 +218,7 @@ class CalPopup(tk.Label):   # Class polymorph from tk.Label
         if isinstance(ww['text'], int) and ww['text'] < 32:
             self.__curr_change(ww.what_m)
             if not self.not_current_is_nav or ww.what_m == 'current':
-                self.__sel = [ww['text'], self.__curr[0], self.__curr[1]]
+                self.__sel = [self.__curr[0], self.__curr[1], ww['text']]
                 self.__date_selected()
                 return True
         self.__matrix_change()
@@ -225,13 +226,14 @@ class CalPopup(tk.Label):   # Class polymorph from tk.Label
     # Change current month, year
     def __curr_change(self, direction):
         if direction == '<<<':
-            self.__curr = [12, self.__curr[1]-1] if self.__curr[0] == 1 else [self.__curr[0]-1, self.__curr[1]]
+            self.__curr = [self.__curr[0]-1, 12] if self.__curr[1] == 1 else [self.__curr[0], self.__curr[1]-1]
         elif direction == '>>>':
-            self.__curr = [1, self.__curr[1]+1] if self.__curr[0] == 12 else [self.__curr[0]+1, self.__curr[1]]
+            self.__curr = [self.__curr[0]+1, 1] if self.__curr[1] == 12 else [self.__curr[0], self.__curr[1]+1]
+
 
     # Save and close
     def __date_selected(self):
-        self.date = '.'.join(map(str, self.__sel))
+        self.date = '-'.join(map(str, self.__sel))
         self.__main.focus_force()       # When PopUp lose focus - it's close. See binds.
         self.__main.date = self.date    # Other class integration
 
@@ -262,11 +264,11 @@ class DateEntry(tk.Label):      # tk.Frame as defaul but we need to translate Fo
         bg, self.hlbg = self.__day['bg'], self.__day['highlightbackground']
         self.__day.config(readonlybackground=bg, bg=self.hlbg)
         dot_dm = tk.Label(self, text='.', **kwargs)
-        dot_dm.config(bg=bg)
+        dot_dm.config(bg=self.hlbg)
         self.__month = tk.Entry(self, width=2, readonlybackground=bg, **kwargs)
         self.__month.config(readonlybackground=bg, bg=self.hlbg)
         dot_my = tk.Label(self, text='.', **kwargs)
-        dot_my.config(bg=bg)
+        dot_my.config(bg=self.hlbg)
         self.__year = tk.Entry(self, width=4, readonlybackground=bg, **kwargs)
         self.__year.config(readonlybackground=bg, bg=self.hlbg)
 
@@ -299,12 +301,12 @@ class DateEntry(tk.Label):      # tk.Frame as defaul but we need to translate Fo
         d = int(d) if d.isdigit() else 0
         m = int(m) if m.isdigit() else 0
         y = int(y) if y.isdigit() else 0
-        return '{:02d}.{:02d}.{}'.format(d, m, y)
+        return '{}-{:02d}-{:02d}'.format(y, m, d)
 
     @date.setter
     def date(self, value):
         try:
-            d, m, y = value.split('.')
+            y, m, d = value.split('-')
         except Exception as e:
             print('Value not a date format dd.mm.yyyy Change it:', value, e)
         else:
@@ -427,7 +429,7 @@ if __name__ == '__main__':
     tt.pack(side='top')
     app = CalPopup(tt)
     # Test
-    aa = tk.Label(root, font=('Times', 40), text='xaxaxa', bd=1)
+    aa = tk.Label(root, font=('Times', 40), text='17.12.2014', bd=1)
     aa.pack(side='top', expand=True, fill='x')
     app2 = CalPopup(aa)
     # Error checker
@@ -437,7 +439,7 @@ if __name__ == '__main__':
     app.date = '11.0x2.1115'
     app.date = 123
     # ==============
-    tt.date = '11.02.2215'
+    tt.date = '2215-02-15'
     root.mainloop()
 
 

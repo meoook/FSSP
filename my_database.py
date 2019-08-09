@@ -11,7 +11,7 @@ class DataBase:
         # Прикручиваем LOGGER
         if log_handler is None:
             def log_pass(*args, **kwargs):
-                print('DataBase class ERROR: Log handler not found.', *args)
+                print('DataBase class ERROR: Log handler not found.', args[0].format(*args[2:]))
 
             self.__to_log = log_pass
         else:
@@ -38,10 +38,10 @@ class DataBase:
         if not self.__conn:
             self.__to_log('Unable to select. Db connection error.', 2)
             return False
-        date = date if (date and date.count('.') == 2 and len(date) == 10 | 18) else '18.02.2019'  # Start tracking date
+        date = date if (date and date.count('-') == 2 and len(date) in (10, 19)) else '18.02.2019'  # Start date
         # Home version
         select = "SELECT upper(lastname), upper(firstname), upper(secondname), to_char(birthday, 'DD.MM.YYYY'), " \
-                 "md5(concat(upper(lastname), upper(firstname), upper(secondname), to_char(birthday, 'DD.MM.YYYY'))), " \
+                 "md5(concat(upper(lastname), upper(firstname), upper(secondname), to_char(birthday, 'DD.MM.YYYY')))," \
                  "creation_date, court_adr, court_numb, reestr " \
                  f"FROM fssp as v WHERE creation_date > '{date}' ORDER BY v.creation_date DESC"
         # work version
@@ -59,9 +59,10 @@ class DataBase:
                  "AND (mia_check_result = 1 OR fssp_check_result = 1) " \
                  f"AND v.creation_date > {date} ORDER BY v.creation_date DESC"
         '''
+        print(select)
         self.__cur.execute(select)
         self.__to_log('SQL request return {} rows. Conditions: {}', 3,
-                      str(self.__cur.rowcount), select[288:-29].upper(), c1=Color.inf, c2=Color.info)
+                      str(self.__cur.rowcount), select[259:-29].upper(), c1=Color.inf, c2=Color.info)
         # , 3, str(self.cur.rowcount), select[632:-29].upper(), c1='#EE4', c2='#EE4')
         return self.__cur.fetchall()
 
@@ -78,8 +79,18 @@ class DataBase:
 
 
 class DbLocal:
-    def __init__(self):
-        self.__db = sqlite3.connect('fssp.db', timeout=5)  # detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES
+    # 'SELECT * FROM sqlite_master'      # like .schema
+    def __init__(self, name='app', log_handler=None):
+        # Прикручиваем LOGGER
+        if log_handler is None:
+            def log_pass(*args, **kwargs):
+                print('DbLocal class ERROR: Log handler not found.', args[0].format(*args[2:]))
+
+            self.__to_log = log_pass
+        else:
+            self.__to_log = log_handler
+        name = name if isinstance(name, str) else 'app'
+        self.__db = sqlite3.connect(name+'.db', timeout=5) # detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES
         self.__db.isolation_level = None  # Auto commit
         self.__c = self.__db.cursor()
         self.__c.execute('''CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY,
@@ -103,15 +114,7 @@ class DbLocal:
                                                 sum REAL)''')
         self.__c.execute('''CREATE UNIQUE INDEX IF NOT EXISTS sums_IDX ON sums (u_id, up_date)''')
 
-        self.table = {}
         self.__u_sums_get()
-
-    @property  # DELETE THIS def
-    def schema(self):
-        """ To show all tables """
-        self.__c.execute('SELECT * FROM sqlite_master')  # like .schema
-        print(self.__c.fetchall())
-        return self.__c.fetchall()
 
     @property
     def table(self):
@@ -122,16 +125,17 @@ class DbLocal:
     def table(self, conditions):
         """ Create select using conditions and the set self.__table """
         uniq = conditions.pop('uniq', False)
-        c_sum = conditions.pop('c_sum', False)
+        c_sum = conditions.pop('c_sum', False)  # Возможно по ФИО - но это не точно )
         date_start = conditions.pop('start', False)
         date_end = conditions.pop('end', False)
+        self.__to_log('Table conditions: uniq = {}, start = {},  end = {}, user = {}', 3,
+                      uniq, date_start, date_end, c_sum)
 
         time = 'min(v.time)' if uniq else 'v.time'
         first = f'''SELECT u."first", u.name, u.second, u.dr, {time}, v.adr, v.court, v.registry, u.c_sum,
                             v.comment, v.jail, (SELECT sum FROM (SELECT sum, MIN(ABS(strftime('%s',v.time) -
                                                         strftime('%s', up_date))) AS xx FROM sums WHERE u_id = v.u_id))
-                            FROM visits AS v 
-                            LEFT JOIN users AS u ON u.id=v.u_id '''
+                            FROM visits AS v LEFT JOIN users AS u ON u.id=v.u_id '''
         last = 'ORDER BY v.time DESC'
         last = 'GROUP BY u.id ' + last if uniq else last
         where = 'WHERE '  # len = 6
@@ -161,6 +165,7 @@ class DbLocal:
                                 LEFT JOIN users AS u ON u.id=v.u_id 
                                 GROUP BY u.id)''').fetchone()
         info += self.__c.execute('''SELECT MAX(time) FROM visits''').fetchone()
+        self.__to_log('DB INFO Visits: {} Users: {}, FSSP: {}, PaySum: {}, Last visit: {}', 3, *info)
         return info
 
     @visits.setter
@@ -175,18 +180,22 @@ class DbLocal:
                         self.__c.execute(f"SELECT id FROM users WHERE c_sum='{row[4]}'")
                         last_id = self.__c.fetchone()[0]
                     else:
-                        print('ADD USER', *row[:5])
+                        self.__to_log('Add User: {} {} {} DR {} C_SUM {}', 3, *row[:5])
                         self.__c.execute("INSERT INTO users(first, name, second, dr, c_sum) VALUES (?, ?, ?, ?, ?)",
                                          (row[0].upper(), row[1].upper(), row[2].upper(), row[3], row[4]))
                         last_id = self.__c.lastrowid
                         self.__u_sums_get()  # After adding - update u_sums
                     self.__c.execute("SELECT time, u_id FROM visits WHERE time=? AND u_id=?", (row[5], last_id))
                     if len(self.__c.fetchall()) > 0:
-                        # print('THIS VISIT ALREADY EXIST')
-                        pass
+                        self.__to_log('This visit already exist. For: ID {}, Time {}', 2, last_id, row[5])
                     else:
-                        self.__c.execute('''INSERT INTO visits (time, u_id, adr, court, registry) VALUES (?, ?, ?, ?, ?)''',
+                        self.__c.execute("INSERT INTO visits (time, u_id, adr, court, registry) VALUES (?, ?, ?, ?, ?)",
                                          (row[5], last_id, row[6], row[7], row[8]))
+                else:
+                    self.__to_log('Wrong format. Use tuple: (F, I, O, dr, control sum, time, adr, court, registry)', 2)
+
+        else:
+            self.__to_log('Use tuple to input visit: (F, I, O, dr, control sum, time, adr, court, registry)', 2)
 
     @property
     def data(self):
@@ -248,6 +257,7 @@ if __name__ == '__main__':
     app.data = ('comment', 'vershov', 'ilya', 'vitalevich', '1992-10-10', '2019-08-05 08:32:44', 'Сообщили ФССП')
 
     print('=== NO FILTER =================================')
+    app.table = {}
     [print(x) for x in app.table]
     print('=== UNIQ, BEFORE 2019-08-04 ===================')
     app.table = {'uniq': 'X', 'end': '2019-08-04'}
