@@ -132,7 +132,7 @@ class DbLocal:
                       uniq, date_start, date_end, c_sum)
 
         time = 'min(v.time)' if uniq else 'v.time'
-        first = f'''SELECT u."first", u.name, u.second, u.dr,  strftime('%d.%m.%Y %H:%M', {time}), v.adr, v.court, v.registry, u.c_sum,
+        first = f'''SELECT u."first", u.name, u.second, u.dr,  strftime('%d.%m.%Y %H:%M:%S', {time}), v.adr, v.court, v.registry, u.c_sum,
                             v.comment, v.jail, (SELECT sum FROM (SELECT sum, MIN(ABS(strftime('%s',v.time) -
                                                         strftime('%s', up_date))) AS xx FROM sums WHERE u_id = v.u_id))
                             FROM visits AS v LEFT JOIN users AS u ON u.id=v.u_id '''
@@ -157,7 +157,7 @@ class DbLocal:
     @property
     def visits(self):
         """ Return tuple: (Count visits, count users, count fssp, money to return, last visit date) """
-        info = self.__c.execute('''SELECT SUM(vists), COUNT(*), SUM(fssp), sum(nearest) FROM (
+        info = self.__c.execute('''SELECT SUM(vists), COUNT(*), SUM(fssp), ROUND(sum(nearest), 2) FROM (
                                 SELECT MIN(v.time), COUNT(*) AS vists, v.registry='ФССП' AS fssp,
                                 (SELECT sum FROM (SELECT sum, MIN(ABS(strftime('%s',v.time) - strftime('%s', up_date)))
                                                   FROM sums	WHERE u_id = v.u_id)) AS "nearest"
@@ -180,7 +180,7 @@ class DbLocal:
                         self.__c.execute(f"SELECT id FROM users WHERE c_sum='{row[4]}'")
                         last_id = self.__c.fetchone()[0]
                     else:
-                        self.__to_log('Add User: {} {} {} DR {} C_SUM {}', 3, *row[:5])
+                        self.__to_log('DB Add User: {} {} {} DR {} C_SUM {}', 3, *row[:5])
                         self.__c.execute("INSERT INTO users(first, name, second, dr, c_sum) VALUES (?, ?, ?, ?, ?)",
                                          (row[0].upper(), row[1].upper(), row[2].upper(), row[3], row[4]))
                         last_id = self.__c.lastrowid
@@ -216,13 +216,13 @@ class DbLocal:
                                     (data[1].upper(), data[2].upper(), data[3].upper(), data[4])).fetchone()
             if u_id:
                 if data[0] == 'comment':
-                    self.__c.execute("UPDATE visits SET comment=? WHERE time=? AND u_id=?", (data[6], data[5], *u_id))
+                    self.__c.execute(f"UPDATE visits SET comment='{data[6]}' WHERE time='{data[5]}' AND u_id={u_id[0]}")
                 elif data[0] == 'jail':
-                    self.__c.execute("UPDATE visits SET jail=? WHERE time=? AND u_id=?", (data[6], data[5], *u_id))
+                    self.__c.execute(f"UPDATE visits SET jail='{data[6]}' WHERE time='{data[5]}' AND u_id={u_id[0]}")
                 elif data[0] == 'sum':
-                    self.__c.execute("UPDATE sums SET sum=? WHERE up_date=? AND u_id=?", (data[6], data[5], *u_id))
+                    self.__c.execute(f"UPDATE sums SET sum={data[6]} WHERE up_date='{data[5]}' AND u_id={u_id[0]}")
                     if self.__c.rowcount == 0:
-                        self.__c.execute("INSERT INTO sums(u_id, up_date, sum) VALUES (?, ?, ?)", (*u_id, data[5], data[6]))
+                        self.__c.execute(f"INSERT INTO sums(u_id, up_date, sum) VALUES (?, ?, ?)", (*u_id, data[5], data[6]))
                 else:
                     self.__to_log('Wrong column name: {}', 2, data[0])
             else:

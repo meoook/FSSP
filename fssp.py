@@ -119,13 +119,13 @@ class FSSP:
         for elem in array:
             typo = len(elem)
             if isinstance(elem, str):  # Поиск по ИП
-                self.__to_log('Add to request: {}', 3, elem)
+                self.__to_log('Add to fssp request: {}', 3, elem)
                 subtask_js = {"type": 3, "params": {"number": elem}}
             elif typo == 2:  # Поиск по имени и адресу - Юрики
-                self.__to_log('Add to request: {} from {}', 3, *elem)
+                self.__to_log('Add to fssp request: {} from {}', 3, *elem)
                 subtask_js = {"type": 2, "params": {"name": elem[0], "address": elem[1], "region": self.region}}
             elif 3 < typo < 10:  # Поиск по ФИО+ДР
-                self.__to_log('Add to request: {} {} {} {}', 3, *elem[0:4])
+                self.__to_log('Add to fssp request: {} {} {} {}', 3, *elem[0:4])
                 subtask_js = {"type": 1,
                               "params": {"firstname": elem[1],
                                          "lastname": elem[0],

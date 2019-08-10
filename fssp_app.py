@@ -453,7 +453,7 @@ class MainF(tk.Frame):
         [self.__tree.insert('', 'end', values=row) for row in self.__db.table]
 
     def __select_record(self, event):
-        PopUp(self.__tree)
+        PopUp(self.__tree, self.__db)
         pass
 
     @property
@@ -644,13 +644,15 @@ class SettingsF(tk.Frame):
 
 
 class PopUp(tk.Toplevel):
-    def __init__(self, tree, *args, **kwargs):
+    def __init__(self, tree, db, *args, **kwargs):
         super().__init__()
         self.row_id = tree.selection()[0]  # row ID
+        self.__tree = tree
+        self.__db = db
         x = tree.winfo_rootx() + 240
         y = tree.winfo_rooty() + 25 + tree.index(self.row_id) * 20   # 25 - headers, 20 - row height проверить на > 15
         self.geometry('+{}+{}'.format(x, y))    # Смещение окна
-        self.overrideredirect(1)  # Убрать TitleBar
+        self.overrideredirect(1)                # Убрать TitleBar
         self.title('Добавить доходы\расходы')
         self.bind('<FocusOut>', lambda event: self.destroy())   # When PopUp lose focus
         self.resizable(False, False)
@@ -663,47 +665,110 @@ class PopUp(tk.Toplevel):
         self.db_n_ico = tk.PhotoImage(file='.\\img\\fssp\\db_n.png')
         self.jail_y_ico = tk.PhotoImage(file='.\\img\\fssp\\jail_y.png')
         self.jail_n_ico = tk.PhotoImage(file='.\\img\\fssp\\jail_n.png')
+        self.ok_ico = tk.PhotoImage(file='.\\img\\fssp\\ok.png')
+        self.cancel_ico = tk.PhotoImage(file='.\\img\\fssp\\cancel.png')
 
         # Захват окна
         #self.grab_set()
         #self.focus_get()
 
         self.row_id = tree.selection()[0]  # row ID
-        row = tree.item(self.row_id)['values']
-        font = ('helvetica', 11)
+        self.row = tree.item(self.row_id)['values']
+
+        font_s = ('helvetica', 8)
+        font = ('helvetica', 10)
         font_b = ('helvetica', 16)
 
-        fio = tk.Label(self, font=font_b, text='{} {} {}'.format(*row[0:3]), bg=Color.bg)
+        find_idx = self.row[9].upper().find('ПРИСТАВУ')
+        if find_idx > -1:
+            to = ('Приставу', self.pristav_ico)
+            txt_idx = find_idx + 9
+        else:
+            find_idx = self.row[9].upper().find('СООБЩИЛИ В ФССП')
+            if find_idx > -1:
+                to = ('ФССП', self.fssp_ico)
+                txt_idx = find_idx + 16
+            else:
+                to = ('Приставу', self.pristav_ico) if int(self.row[4][-1:]) % 2 == 0 else ('ФССП', self.fssp_ico)
+                txt_idx = 0
+
+        find_idx = self.row[9].upper().find('БАЗЫ'), self.row[9].upper().find('БАЗЕ')
+        find_idx = find_idx[0] if find_idx[0] > find_idx[1] else find_idx[1]
+        if find_idx > -1:
+            in_bd = ('Снят с базы', self.db_n_ico)
+            txt_idx = find_idx + 5 if find_idx + 5 > txt_idx else txt_idx
+        else:
+            in_bd = ('Есть в базе', self.db_y_ico)
+        text = self.row[9][txt_idx:].lstrip() if len(self.row[9]) > txt_idx and self.row[9] != 'None' else ''
+
+        in_jail = ('Свободен', self.jail_n_ico) if self.row[10] in ('None', '') else ('Доставлен', self.jail_y_ico)
+
+        fio = tk.Label(self, font=font_b, text='{} {} {}'.format(*self.row[0:3]), bg=Color.bg)
         fio.pack(side='top', fill='both', ipadx=5)
 
         c_sum_frame = tk.Frame(self, bg=Color.bg_end)
-        c_sum_frame.pack(side='top', fill='both', ipadx=5)
-        tk.Label(c_sum_frame, font=font, text='Контрольная сумма', bg=Color.bg).pack(side='left', fill='both', ipadx=5, padx=3)
-        tk.Label(c_sum_frame, font=font, text=row[8], bg=Color.bg).pack(side='left', fill='both', ipadx=5)
+        c_sum_frame.pack(side='top', fill='both', ipadx=5, pady=1)
+        tk.Label(c_sum_frame, font=font, text='Контрольная сумма:', bg=Color.bg).pack(side='left', fill='both', ipadx=5)
+        tk.Label(c_sum_frame, font=font, text=self.row[8], bg=Color.bg, anchor='w').pack(side='left', fill='both', expand=True)
 
-        btn_lable = tk.Label(self, font=font, text='BUTTONS HERE')
-        btn_lable.pack(side='top', fill='both', ipadx=5)
-        btn_frame = tk.Frame(self, bd=2, bg='#333')
+        btn_frame = tk.Frame(self, bg='#333')
         btn_frame.pack(side='top', fill='both', expand=True)
 
-        tk.Label(btn_frame, font=font, text='Сообщили', bg=Color.bg).grid(row=0, column=0, sticky='NSEW')
-        tk.Button(btn_frame, text='ФССП', image=self.fssp_ico, compound='center').grid(row=1, column=0, sticky='NSEW')
-        tk.Label(btn_frame, font=font, text='Снят с базы', bg=Color.bg).grid(row=0, column=1, sticky='NSEW', padx=1)
-        tk.Button(btn_frame, text='Есть в базе', image=self.db_y_ico, compound='bottom').grid(row=1, column=1, sticky='NSEW')
-        tk.Label(btn_frame, font=font, text='Задержан', bg=Color.bg).grid(row=0, column=2, sticky='NSEW')
-        tk.Button(btn_frame, text='Зона', image=self.jail_y_ico, compound='top').grid(row=1, column=2, sticky='NSEW')
+        btn_def = {'compound': 'top', 'highlightbackground': Color.bg_hl, 'bg': Color.bg2, 'bd': 0}
+        tk.Label(btn_frame, font=font, text='Сообщили', bg=Color.bg, width=10).grid(row=0, column=0, sticky='NSEW')
+        self.btn_to = tk.Button(btn_frame, text=to[0], image=to[1], command=lambda: self.__clicked('say_to'), **btn_def)
+        self.btn_to.grid(row=1, column=0, sticky='NSEW')
+        App.bind_hover(self.btn_to)
+        tk.Label(btn_frame, font=font, text='В реестре', bg=Color.bg, width=10).grid(row=0, column=1, sticky='NSEW', padx=1)
+        self.btn_db = tk.Button(btn_frame, text=in_bd[0], image=in_bd[1], command=lambda: self.__clicked('db'), **btn_def)
+        self.btn_db.grid(row=1, column=1, sticky='NSEW', padx=1)
+        App.bind_hover(self.btn_db)
+        tk.Label(btn_frame, font=font, text='Задержан', bg=Color.bg, width=10).grid(row=0, column=2, sticky='NSEW')
+        self.btn_jail = tk.Button(btn_frame, text=in_jail[0], image=in_jail[1], command=lambda: self.__clicked('jail'), **btn_def)
+        self.btn_jail.grid(row=1, column=2, sticky='NSEW')
+        App.bind_hover(self.btn_jail)
 
-        tk.Text(btn_frame, font=font, width=15, height=3).grid(row=0, column=3, sticky='NSEW', rowspan=2)
+        tk.Label(btn_frame, font=font, text='Комментарий', bg=Color.bg, width=10).grid(row=0, column=3, sticky='NSEW', padx=1)
+        self.text_f = tk.Text(btn_frame, font=font, width=20, height=3, bd=0)
+        self.text_f.grid(row=1, column=3, sticky='NSEW', padx=1)
+        self.text_f.insert('end', text)
 
-        tk.Button(btn_frame, text='ОК', width=7).grid(row=0, column=4, sticky='NSEW', rowspan=2)
-        tk.Button(btn_frame, text='ОТМЕНА', width=7, command=self.destroy).grid(row=0, column=5, sticky='NSEW', rowspan=2)
-        '''
-        self.btn_ok.bind('<Button-1>', lambda event: self.view.insert_record(self.entry_description.get(),
-                                                                       self.combobox.get(),
-                                                                       self.entry_money.get()))
-        '''
+        tk.Label(btn_frame, font=font, text='Сохранить изменения', bg=Color.bg, width=18).grid(row=0, column=4, sticky='NSEW', columnspan=2)
+        ok = tk.Button(btn_frame, text='ОК', image=self.ok_ico, width=9, bd=0, highlightbackground=Color.bg_hl, bg=Color.bg2, command=self.__save)
+        ok.grid(row=1, column=4, sticky='NSEW')
+        App.bind_hover(ok)
+        cancel = tk.Button(btn_frame, text='ОТМЕНА', image=self.cancel_ico, width=9, bd=0, highlightbackground=Color.bg_hl, bg=Color.bg2, command=self.destroy)
+        cancel.grid(row=1, column=5, sticky='NSEW')
+        App.bind_hover(cancel)
 
+    def __clicked(self, btn_name):
+        if btn_name == 'say_to':
+            val = ('Приставу', self.pristav_ico) if self.btn_to['text'] == 'ФССП' else ('ФССП', self.fssp_ico)
+            self.btn_to.config(text=val[0], image=val[1])
+        elif btn_name == 'db':
+            val = ('Есть в базе', self.db_y_ico) if self.btn_db['text'] == 'Снят с базы' else ('Снят с базы', self.db_n_ico)
+            self.btn_db.config(text=val[0], image=val[1])
+        elif btn_name == 'jail':
+            val = ('Свободен', self.jail_n_ico) if self.btn_jail['text'] == 'Доставлен' else ('Доставлен', self.jail_y_ico)
+            self.btn_jail.config(text=val[0], image=val[1])
 
+    def __save(self):
+        date = time.strftime("%Y-%m-%d %H:%M:%S", time.strptime(self.row[4], '%d.%m.%Y %H:%M:%S'))
+        txt = 'Сообщили в ФССП. ' if self.btn_to['text'] == 'ФССП' else 'Сообщили приставу. '
+        txt += 'Снят с базы. ' if self.btn_db['text'] == 'Снят с базы' else ''
+        txt += self.text_f.get(1.0, 'end')[:-1]
+
+        self.__tree.set(self.row_id, 'comm', txt)
+        self.__db.data = ('comment', *self.row[0:4], date,  txt)
+
+        if self.btn_jail['text'] == 'Доставлен':
+            self.__tree.set(self.row_id, 'jail', 'ЗАДЕРЖАН')
+            self.__db.data = ('jail', *self.row[0:4], date, 'ЗАДЕРЖАН')
+        else:
+            self.__tree.set(self.row_id, 'jail', 'None')
+            self.__db.data = ('jail', *self.row[0:4], date, None)
+
+        self.destroy()
 
 
 if __name__ == '__main__':
