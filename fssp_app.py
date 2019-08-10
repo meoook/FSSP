@@ -29,14 +29,6 @@ from fssp import FSSP
 from my_colors import Color
 
 
-# TREE CLICK - UPDATE comment and jail. SAVE BUTTON. AND SEND MAIL BUTTON.
-# TREE CLICK - UPDATE comment and jail. SAVE BUTTON. AND SEND MAIL BUTTON.
-# TREE CLICK - UPDATE comment and jail. SAVE BUTTON. AND SEND MAIL BUTTON.
-# TREE CLICK - UPDATE comment and jail. SAVE BUTTON. AND SEND MAIL BUTTON.
-# TREE CLICK - UPDATE comment and jail. SAVE BUTTON. AND SEND MAIL BUTTON.
-# TREE CLICK - UPDATE comment and jail. SAVE BUTTON. AND SEND MAIL BUTTON.
-
-# Основной класс программы
 class App(tk.Tk):
     def __init__(self, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
@@ -65,8 +57,10 @@ class App(tk.Tk):
             frame.grid(row=0, column=0, sticky='nsew')
         # При запуске инициализируем конфиг и показываем заглавную страницу
         self.__threads = []
+        self.__trace_connections = tk.IntVar(value=3)   # Update when thread finish. Can't use sqlite form thread.
+        self.__trace_connections.trace("w", self.__use_filter)
+        self.__init_connections()
         self.__show_frame(MainF)
-        #self.__frames[MainF].filter = {'uniq': True, 'start': '2019-08-05'}
         self.__filter = {'uniq': False}
         self.__use_filter()
 
@@ -105,7 +99,7 @@ class App(tk.Tk):
     def __tool_bar(self):
         font = ('helvetica', 27)  # "Arial 24"
         # ToolBar Frame
-        toolbar = tk.Frame(self, bg='#33C', bd=1, relief='solid')
+        toolbar = tk.Frame(self, bg=Color.bg_end, bd=1, relief='solid')
         toolbar.pack(side='top', fill='both', padx=2)
         # ICONS
         self.settings_ico = tk.PhotoImage(file='.\\img\\fssp\\settings.png')
@@ -171,6 +165,7 @@ class App(tk.Tk):
         elif where == 'home':
             self.btn_s.config(image=self.settings_ico)
             self.btn_s.config(command=lambda: self.__tool_bar_btn('settings'))
+            self.__init_connections()
             self.__show_frame(MainF)
         elif where == 'one':
             self.btn_uniq.config(image=self.one_ico)
@@ -183,13 +178,13 @@ class App(tk.Tk):
             self.__filter['uniq'] = False
             self.__use_filter()
 
-    def __use_filter(self):
+    def __use_filter(self, *args):
+        uniq = self.__filter['uniq']    # Add here if new values
         self.__filter['start'] = self.start_date.date
         self.__filter['end'] = self.end_date.date
-        print(self.__filter)
-        self.__frames[MainF].filter = self.__filter
+        self.__frames[MainF].filter = self.__filter   # After call - filter lose value (cos using pop)
+        self.__filter = {'uniq': uniq, 'start': self.start_date.date, 'end': self.end_date.date}
 
-    # Проверка всех путей like __init__ ; переделать под каждый файл
     def _chk_paths(self, path_type='all'):
         cur_dir = os.getcwd() + '\\'
         self._get_config()
@@ -305,7 +300,6 @@ class App(tk.Tk):
                           'user': self.cfg['POSTGRES']['USER'], 'pwd': self.cfg['POSTGRES']['PWD']}, self._to_log)
         fssp = FSSP(self.cfg['FSSP.RU']['TOKEN'], self.cfg['FSSP.RU']['PAUSE'], self.cfg['FSSP.RU']['URL'],
                     self._to_log)
-        print(db.visits)
         db.visits = db_pg.select_sql(db.visits[4])  # Select visits and then insert in local DB
         db_pg.close()
         if db.data:                 # New users from visits
@@ -314,7 +308,7 @@ class App(tk.Tk):
             for x in fssp.arr:      # Insert new sums for users\visits
                 db.data = ('sum', *x[1:5], time.strftime("%Y-%m-%d", time.localtime()), x[5])
         self.__busy.config(image=self.btn_g_ico)  # Turn light - GREEN
-        self.__frames[MainF].view_records()
+        self.__trace_connections.set(1)
 
     def __save_data(self):
         print('SAVING ))')
@@ -322,7 +316,6 @@ class App(tk.Tk):
 
     def __show_frame(self, context):  # Вывод на передний план фрейма
         self.__frames[context].tkraise()
-        self.__init_connections()
 
     def _get_config(self):   # Used in SettingsF class
         self.cfg = configparser.ConfigParser()
@@ -431,8 +424,8 @@ class MainF(tk.Frame):
                                  'F', 'I', 'O', 'dr', 'dt', 'adr', 'court', 'rst', 'csum', 'comm', 'jail', 'sum'),
                                    displaycolumns=('dt', 'adr', 'court', 'rst', 'csum', 'comm', 'jail', 'sum'))
         # Таблица для вывода результатов
-        self.__tree.column('dt', width=115, anchor=tk.CENTER)
-        self.__tree.column('adr', width=245, anchor=tk.W)
+        self.__tree.column('dt', width=110, anchor=tk.CENTER)
+        self.__tree.column('adr', width=250, anchor=tk.W)
         self.__tree.column('court', width=55, anchor=tk.CENTER)
         self.__tree.column('rst', width=50, anchor=tk.CENTER)
         self.__tree.column('csum', width=130, anchor=tk.W)
@@ -450,6 +443,7 @@ class MainF(tk.Frame):
         self.__tree.heading('sum', text='Сумма взысканий')
 
         self.__tree.pack(side='top', fill='both')
+        self.__tree.bind('<<TreeviewSelect>>', self.__select_record)
 
         self.__db = DbLocal('fssp', controller._to_log)
         #self.filter = {'uniq': False}
@@ -457,6 +451,10 @@ class MainF(tk.Frame):
     def view_records(self):
         [self.__tree.delete(i) for i in self.__tree.get_children()]
         [self.__tree.insert('', 'end', values=row) for row in self.__db.table]
+
+    def __select_record(self, event):
+        PopUp(self.__tree)
+        pass
 
     @property
     def filter(self):
@@ -643,6 +641,69 @@ class SettingsF(tk.Frame):
     def __trace_clear(str_var):
         for t in str_var.trace_vinfo():
             str_var.trace_vdelete(*t)
+
+
+class PopUp(tk.Toplevel):
+    def __init__(self, tree, *args, **kwargs):
+        super().__init__()
+        self.row_id = tree.selection()[0]  # row ID
+        x = tree.winfo_rootx() + 240
+        y = tree.winfo_rooty() + 25 + tree.index(self.row_id) * 20   # 25 - headers, 20 - row height проверить на > 15
+        self.geometry('+{}+{}'.format(x, y))    # Смещение окна
+        self.overrideredirect(1)  # Убрать TitleBar
+        self.title('Добавить доходы\расходы')
+        self.bind('<FocusOut>', lambda event: self.destroy())   # When PopUp lose focus
+        self.resizable(False, False)
+        self.focus_force()
+        self.config(bg=Color.bg_end, highlightcolor=Color.bg_end, highlightthickness=1)
+
+        self.fssp_ico = tk.PhotoImage(file='.\\img\\fssp\\fssp.png')
+        self.pristav_ico = tk.PhotoImage(file='.\\img\\fssp\\pristav.png')
+        self.db_y_ico = tk.PhotoImage(file='.\\img\\fssp\\db_y.png')
+        self.db_n_ico = tk.PhotoImage(file='.\\img\\fssp\\db_n.png')
+        self.jail_y_ico = tk.PhotoImage(file='.\\img\\fssp\\jail_y.png')
+        self.jail_n_ico = tk.PhotoImage(file='.\\img\\fssp\\jail_n.png')
+
+        # Захват окна
+        #self.grab_set()
+        #self.focus_get()
+
+        self.row_id = tree.selection()[0]  # row ID
+        row = tree.item(self.row_id)['values']
+        font = ('helvetica', 11)
+        font_b = ('helvetica', 16)
+
+        fio = tk.Label(self, font=font_b, text='{} {} {}'.format(*row[0:3]), bg=Color.bg)
+        fio.pack(side='top', fill='both', ipadx=5)
+
+        c_sum_frame = tk.Frame(self, bg=Color.bg_end)
+        c_sum_frame.pack(side='top', fill='both', ipadx=5)
+        tk.Label(c_sum_frame, font=font, text='Контрольная сумма', bg=Color.bg).pack(side='left', fill='both', ipadx=5, padx=3)
+        tk.Label(c_sum_frame, font=font, text=row[8], bg=Color.bg).pack(side='left', fill='both', ipadx=5)
+
+        btn_lable = tk.Label(self, font=font, text='BUTTONS HERE')
+        btn_lable.pack(side='top', fill='both', ipadx=5)
+        btn_frame = tk.Frame(self, bd=2, bg='#333')
+        btn_frame.pack(side='top', fill='both', expand=True)
+
+        tk.Label(btn_frame, font=font, text='Сообщили', bg=Color.bg).grid(row=0, column=0, sticky='NSEW')
+        tk.Button(btn_frame, text='ФССП', image=self.fssp_ico, compound='center').grid(row=1, column=0, sticky='NSEW')
+        tk.Label(btn_frame, font=font, text='Снят с базы', bg=Color.bg).grid(row=0, column=1, sticky='NSEW', padx=1)
+        tk.Button(btn_frame, text='Есть в базе', image=self.db_y_ico, compound='bottom').grid(row=1, column=1, sticky='NSEW')
+        tk.Label(btn_frame, font=font, text='Задержан', bg=Color.bg).grid(row=0, column=2, sticky='NSEW')
+        tk.Button(btn_frame, text='Зона', image=self.jail_y_ico, compound='top').grid(row=1, column=2, sticky='NSEW')
+
+        tk.Text(btn_frame, font=font, width=15, height=3).grid(row=0, column=3, sticky='NSEW', rowspan=2)
+
+        tk.Button(btn_frame, text='ОК', width=7).grid(row=0, column=4, sticky='NSEW', rowspan=2)
+        tk.Button(btn_frame, text='ОТМЕНА', width=7, command=self.destroy).grid(row=0, column=5, sticky='NSEW', rowspan=2)
+        '''
+        self.btn_ok.bind('<Button-1>', lambda event: self.view.insert_record(self.entry_description.get(),
+                                                                       self.combobox.get(),
+                                                                       self.entry_money.get()))
+        '''
+
+
 
 
 if __name__ == '__main__':

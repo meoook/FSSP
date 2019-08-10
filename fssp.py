@@ -18,7 +18,7 @@ class FSSP:
         self.url = url
         self.pause = int(pause) if int(pause) < 5 else 5  # Minimum value for pause
         self.region = 77    # Default - Moscow
-        self.__result = False
+        self.__result = []
         # Прикручиваем LOGGER
         if log_handler is None:
             def log_pass(*args, **kwargs):
@@ -68,7 +68,7 @@ class FSSP:
     def arr(self, array):
         """ Проверяем входящий массив и сразу запускаем проверку на штрафы """
         if isinstance(array, list):
-            self.__result = False
+            self.__result = []
             arr, doubles_count = self.__arr_check_doubles(array)
             if doubles_count > 0:
                 self.__to_log('Deleted doubles and errors from request. Count: {}', 3, doubles_count)
@@ -78,28 +78,54 @@ class FSSP:
         else:
             self.__to_log('Input type not valid: {}. Use "List" instead.', 2, type(array))
 
-    def __response_status(self, response):
+    def __request_fssp(self, url, json):
         """ Проверка на статус ответа запроса """
-        js_resp = response.json()
+        try:
+            response = requests.get(url=url, json=json) if 'task' in json else requests.post(url=url, json=json)
+        except requests.HTTPError as err:
+            self.__to_log("HTTP fssp error. Exception: {}", 1, err)
+            return False
+        except requests.ConnectionError:
+            self.__to_log("Error connection to fssp", 1)
+            return False
+        except requests.RequestException as err:
+            self.__to_log("Exception fssp error. Exception: {}", 1, err)
+            return False
+        except Exception as err:
+            self.__to_log("Unknown fssp error. Exception: {}", 1, err)
+            return False
+        try:
+            js_resp = response.json()
+        except Exception as err:
+            self.__to_log("Response is not json. Exception: {}", 2, err)
+            js_resp = {'exception': err, 'status': 'URL Error'}
         if response.status_code != 200:  # Если ответ - ошибка
-            self.__to_log("Request error, CODE: {} Exception: {}", 2, response.status_code, js_resp["exception"],
+            self.__to_log("Request error, CODE: {} Exception: {}", 1, response.status_code, js_resp["exception"],
                           c1=Color.inf, c2=Color.err)
             return False
         if js_resp['status'] != 'success':  # Если статус запроса - ошибка
             self.__to_log("Request error, Status: {} ", 2, js_resp['status'])
             return False
-        return True
+        return response
 
     # Получаем UUID из списка бандитов
     def __uuid_get(self, array):
+        if len(array) > 0:
+            self.__to_log('Getting UUID for {} users...', 3, len(array))
+        else:
+            self.__to_log('Empty user list to get UUID', 2)
+            return False
         reqst = {"token": self.token, "request": []}
         for elem in array:
             typo = len(elem)
             if isinstance(elem, str):  # Поиск по ИП
+                self.__to_log('Add to request: {}', 3, elem)
                 subtask_js = {"type": 3, "params": {"number": elem}}
             elif typo == 2:  # Поиск по имени и адресу - Юрики
+                self.__to_log('Add to request: {} from {}', 3, *elem)
                 subtask_js = {"type": 2, "params": {"name": elem[0], "address": elem[1], "region": self.region}}
             elif 3 < typo < 10:  # Поиск по ФИО+ДР
+                self.__to_log('Add to request: {} {} {} {}', 3, *elem[0:4])
                 subtask_js = {"type": 1,
                               "params": {"firstname": elem[1],
                                          "lastname": elem[0],
@@ -112,9 +138,8 @@ class FSSP:
             reqst["request"].append(subtask_js)
 
         url = self.url + 'search/group'
-        response = requests.post(url=url, json=reqst)
-        self.__to_log('Getting UUID for {} tasks...', 3, len(array))
-        if self.__response_status(response):
+        response = self.__request_fssp(url, reqst)
+        if response:
             self.__uuid = response.json()['response']['task']
             self.__to_log('Successfully taken UUID {}', 3, response.json()['response']['task'])
             return True
@@ -128,14 +153,15 @@ class FSSP:
         if self.__uuid:
             url = self.url + 'result' if request_for == 'result' else self.url + 'status'
             params = {"token": self.token, "task": self.__uuid}
-            resp = requests.get(url=url, json=params)
-            if self.__response_status(resp):
+            response = self.__request_fssp(url, params)
+            if response:
+                js_resp = response.json()['response']
                 if request_for == 'result':
-                    return resp.json()['response']['result']  # When task finished - return json array with results
+                    return js_resp['result']  # When task finished - return json array with results
                 else:
                     self.__to_log('For UUID {} Requests done {} Status: {}', 3, self.__uuid,
-                                  resp.json()['response']['progress'], status_arr[resp.json()['response']['status']])
-                    return resp.json()['response']['status']
+                                  js_resp['progress'], status_arr[js_resp['status']])
+                    return js_resp['status']
         self.__to_log('UUID {} failure', 2, self.__uuid)
         return False
 
@@ -188,7 +214,7 @@ class FSSP:
                 if vio_str:             # is None: для re.search
                     for x in vio_str:   # На случай если в строке больше одной суммы
                         calc = round(calc + float(x[:-4]), 2)  # Без округления X.0000000000123
-        return str(calc).replace('.', ',')
+        return calc    # str(calc).replace('.', ',')
 
 
 if __name__ == '__main__':

@@ -51,6 +51,8 @@ LABEL_OPTIONS = {'activebackground': 'SystemButtonFace',    # BG color when stat
 
 
 class CalPopup(tk.Label):   # Class polymorph from tk.Label
+    """ Russian calendar popup. Change month/week names to change locale.
+        Use date to set/get date. To change calendar size use font_size. Change colors in style function. """
     # App Settings
     not_current_is_nav = True       # Даты не текущего месяца являются кнопками навигации
     # Locale Settings
@@ -123,17 +125,39 @@ class CalPopup(tk.Label):   # Class polymorph from tk.Label
         print('\33[93m{:5s} \33[92m{main}\33[93m\n{:5s} \33[92m{weeks}\33[93m\n{:5s} \33[92m{year}\33[93m\n{:5s} '
               '\33[92m{nav}\33[0m'.format(*self.font_size, **self.font_size), '\33[0m')
 
+    @staticmethod
+    def __bind_hover(widget):
+        """ Change color where mouse on the cell """
+        enter_color = widget['highlightbackground']
+        leave_color = widget['background']
+        widget.bind('<Enter>', lambda event, bg=enter_color: widget.config(background=bg))
+        widget.bind('<Leave>', lambda event, bg=leave_color: widget.config(background=bg))
+
+    @staticmethod
+    def __get_cell_style(holiday=False, month_sel='current'):
+        """ Set colors for cells: weeks, other month """
+        style = {'fg': '#111'}
+        if month_sel == 'current':
+            style['background'] = '#999' if holiday else '#CCC'     # Этот месяц: выходной\будень
+            style['highlightbackground'] = '#666' if holiday else '#888'
+        else:
+            style['background'] = '#595959' if holiday else '#757575'     # Другой месяц: выходной\будень
+            style['highlightbackground'] = '#555' if holiday else '#555'
+            style['fg'] = '#DDD'
+        return style
+
     def __styles_setter(self):
-        default = {'fg': '#111', 'bg': '#EEE', 'bd': 1, 'relief': 'raised',
-                       'activebackground': '#090', 'activeforeground': '#AFA',
-                       'highlightthickness': 0, 'highlightbackground': '#CCC'}  # this value used for mouse:hover state
+        """ This function to easy change calendar style. Change values for your own style. """
+        default = {'fg': '#111', 'bg': '#EEE', 'bd': 1, 'relief': 'raised',     # Default cell style
+                       'activebackground': '#090', 'activeforeground': '#AFA',  # Selected day style
+                       'highlightthickness': 0, 'highlightbackground': '#CCC'}  # This value used for mouse:hover state
         self.__style_nav = {'font': self.__font_n, **default, 'pady': 5}
         self.__style_year = {'font': self.__font_y, **default, 'relief': 'flat', 'fg': '#222'}
         self.__style_week = {'font': self.__font_w, **default, 'width': 2}
         self.__style_cell = {'font': self.__font_c, **default, 'width': 2, 'cursor': 'hand2'}
-        # More cell styles in get_cell_style function.
 
     def __popup(self):
+        """ Create popup window """
         top = tk.Toplevel()
         self.date = self.__main.date        # Integration with other classes
         self.__curr = self.__sel[0:2]       # Del & uncomment in date.setter to continue from month we stop
@@ -167,6 +191,8 @@ class CalPopup(tk.Label):   # Class polymorph from tk.Label
         year_name.place(rely=0.01, relx=0.667, relheight=0.4, relwidth=0.09)
 
     def __matrix_create_frames(self, top):
+        """ Creating matrix grid to insert day values and styles.
+         If create/delete cells on navigation change - window will blink. """
         cal_fr = tk.Frame(top)
         cal_fr.pack(side='top', fill='both')
         # Week days (here for normal grid) ! Need styling for this
@@ -175,8 +201,8 @@ class CalPopup(tk.Label):   # Class polymorph from tk.Label
             week.grid(row=0, column=i, ipadx=0, ipady=0, sticky='NSEW')
         self.__cells = [tk.Label(cal_fr, self.__style_cell, textvariable=self.__day_vars[i]) for i in range(42)]
 
-    # Insert values in matrix
     def __matrix_change(self):
+        """ Insert selected month days to the matrix grid """
         self.__curr_m_name.set(self.__month_names[self.__curr[1]])
         self.__curr_y_name.set(self.__curr[0])
         cal_array = list(calendar.TextCalendar(firstweekday=0).itermonthdays4(self.__curr[0], self.__curr[1]))
@@ -201,8 +227,8 @@ class CalPopup(tk.Label):   # Class polymorph from tk.Label
         for i in range(len(cal_array), 42):
             self.__cells[i].grid_forget()   # Hide other cells
 
-    # Check click on PopUp !-> curr_change or date_selected
     def __check_this_button(self, event):
+        """ Using one function to all buttons on PopUp. Checking cell value and what_m for day cells. """
         ww = event.widget
         if 'label' not in str(ww):  # or ww.winfo_name()
             print('\33[91mGRID Error. Clicked not on {} widget\33[0m'.format(ww))   # To log
@@ -225,36 +251,17 @@ class CalPopup(tk.Label):   # Class polymorph from tk.Label
 
     # Change current month, year
     def __curr_change(self, direction):
+        """ Navigation. Change month and year if end month position. """
         if direction == '<<<':
             self.__curr = [self.__curr[0]-1, 12] if self.__curr[1] == 1 else [self.__curr[0], self.__curr[1]-1]
         elif direction == '>>>':
             self.__curr = [self.__curr[0]+1, 1] if self.__curr[1] == 12 else [self.__curr[0], self.__curr[1]+1]
 
-
-    # Save and close
     def __date_selected(self):
+        """ Save selected date and close popup """
         self.date = '-'.join(map(str, self.__sel))
         self.__main.focus_force()       # When PopUp lose focus - it's close. See binds.
         self.__main.date = self.date    # Other class integration
-
-    @staticmethod
-    def __bind_hover(widget):
-        enter_color = widget['highlightbackground']
-        leave_color = widget['background']
-        widget.bind('<Enter>', lambda event, bg=enter_color: widget.config(background=bg))
-        widget.bind('<Leave>', lambda event, bg=leave_color: widget.config(background=bg))
-
-    @staticmethod
-    def __get_cell_style(holiday=False, month_sel='current'):
-        style = {'fg': '#111'}
-        if month_sel == 'current':
-            style['background'] = '#999' if holiday else '#CCC'     # Этот месяц: выходной\будень
-            style['highlightbackground'] = '#666' if holiday else '#888'
-        else:
-            style['background'] = '#595959' if holiday else '#757575'     # Другой месяц: выходной\будень
-            style['highlightbackground'] = '#555' if holiday else '#555'
-            style['fg'] = '#DDD'
-        return style
 
 
 class DateEntry(tk.Label):      # tk.Frame as defaul but we need to translate Font
@@ -318,7 +325,8 @@ class DateEntry(tk.Label):      # tk.Frame as defaul but we need to translate Fo
             self.__month.insert(0, m)
             self.__year.insert(0, y)
 
-    def __day_part_detect(self, widget):    # Возвращает право и лево от текущей ячейки
+    def __day_part_detect(self, widget):
+        """ Return left and right cells from current cell. """
         before = False
         nxt = False
         if widget == self.__day:

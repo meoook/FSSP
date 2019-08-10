@@ -15,4 +15,5 @@ class Color:
 
     bg = '#6CF'
     bg_hl = '#39F'
-    fg = '#003'
+    bg_end = '#33C'
+    fg = '#000'

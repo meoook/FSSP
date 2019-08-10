@@ -23,7 +23,7 @@ class DataBase:
     def open(self, pa):  # Parameters
         try:
             self.__conn = psycopg2.connect(host=pa['host'], database=pa['dbname'], user=pa['user'], password=pa['pwd'],
-                                           connect_timeout=1)
+                                           connect_timeout=3.0)
         except psycopg2.Error as error:
             self.__to_log('DB ERROR {}', 1, str(error)[:-1], c1=Color.zero)
             self.__conn = None
@@ -59,7 +59,6 @@ class DataBase:
                  "AND (mia_check_result = 1 OR fssp_check_result = 1) " \
                  f"AND v.creation_date > {date} ORDER BY v.creation_date DESC"
         '''
-        print(select)
         self.__cur.execute(select)
         self.__to_log('SQL request return {} rows. Conditions: {}', 3,
                       str(self.__cur.rowcount), select[259:-29].upper(), c1=Color.inf, c2=Color.info)
@@ -69,7 +68,8 @@ class DataBase:
     # Закрываем соединение с БД - не понятно, работает ли :)
     def close(self):
         if self.__conn:
-            self.__to_log('SQL Close')
+            db_info = self.__conn.get_dsn_parameters()
+            self.__to_log('SQL Close. Host: {} DataBase: {}', 3, db_info['host'], db_info['dbname'])
             self.__conn.commit()
             self.__cur.close()
             self.__conn.close()
@@ -132,7 +132,7 @@ class DbLocal:
                       uniq, date_start, date_end, c_sum)
 
         time = 'min(v.time)' if uniq else 'v.time'
-        first = f'''SELECT u."first", u.name, u.second, u.dr, {time}, v.adr, v.court, v.registry, u.c_sum,
+        first = f'''SELECT u."first", u.name, u.second, u.dr,  strftime('%d.%m.%Y %H:%M', {time}), v.adr, v.court, v.registry, u.c_sum,
                             v.comment, v.jail, (SELECT sum FROM (SELECT sum, MIN(ABS(strftime('%s',v.time) -
                                                         strftime('%s', up_date))) AS xx FROM sums WHERE u_id = v.u_id))
                             FROM visits AS v LEFT JOIN users AS u ON u.id=v.u_id '''
@@ -209,21 +209,26 @@ class DbLocal:
     @data.setter
     def data(self, data):  # data = Tuple(column, F, I, O, dr, time, data)
         """ Update comment or jail for row or update/insert sum. For sum: time must be date format """
-        u_id = self.__c.execute('''SELECT id FROM users WHERE "first"=? AND name=? AND "second"=? AND dr=?''',
-                                (data[1].upper(), data[2].upper(), data[3].upper(), data[4].upper())).fetchone()
-        if u_id:
-            if data[0] == 'comment':
-                self.__c.execute("UPDATE visits SET comment=? WHERE time=? AND u_id=?", (data[6], data[5], *u_id))
-            elif data[0] == 'jail':
-                self.__c.execute("UPDATE visits SET jail=? WHERE time=? AND u_id=?", (data[6], data[5], *u_id))
-            elif data[0] == 'sum':
-                self.__c.execute("UPDATE sums SET sum=? WHERE up_date=? AND u_id=?", (data[6], data[5], *u_id))
-                if self.__c.rowcount == 0:
-                    self.__c.execute("INSERT INTO sums(u_id, up_date, sum) VALUES (?, ?, ?)", (*u_id, data[5], data[6]))
+        if isinstance(data, tuple):
+            self.__to_log('UPDATE user {} time {}. Value {} sets to {}', 3, data[1], data[5], data[0], data[6],
+                          c1=Color.hl, c2=Color.hl, c3=Color.hl1, c4=Color.hl2)
+            u_id = self.__c.execute('''SELECT id FROM users WHERE "first"=? AND name=? AND "second"=? AND dr=?''',
+                                    (data[1].upper(), data[2].upper(), data[3].upper(), data[4])).fetchone()
+            if u_id:
+                if data[0] == 'comment':
+                    self.__c.execute("UPDATE visits SET comment=? WHERE time=? AND u_id=?", (data[6], data[5], *u_id))
+                elif data[0] == 'jail':
+                    self.__c.execute("UPDATE visits SET jail=? WHERE time=? AND u_id=?", (data[6], data[5], *u_id))
+                elif data[0] == 'sum':
+                    self.__c.execute("UPDATE sums SET sum=? WHERE up_date=? AND u_id=?", (data[6], data[5], *u_id))
+                    if self.__c.rowcount == 0:
+                        self.__c.execute("INSERT INTO sums(u_id, up_date, sum) VALUES (?, ?, ?)", (*u_id, data[5], data[6]))
+                else:
+                    self.__to_log('Wrong column name: {}', 2, data[0])
             else:
-                print('Wrong data. Use tuple with format: (Column Name, F, I, O, dr, Time, Data to insert)')
+                self.__to_log('User not fount: {} {} {} {}', 2, *data[1:5])
         else:
-            print('User not fount', data[1:5])
+            self.__to_log('Wrong data. Use tuple with format: (Column Name, F, I, O, dr, Time, Data to insert)', 2)
 
     def __u_sums_get(self):
         """ Get array of control sums """
