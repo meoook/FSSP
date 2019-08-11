@@ -2,6 +2,9 @@ from datetime import datetime
 import xlsxwriter
 from my_database import DbLocal
 # =FREQUENCY(MATCH(E3:$E$21;E3:$E$21;0);MATCH(E3:$E$21;E3:$E$21;0)) = COUNTIF($E$3:$E$10002; E3)
+# =FREQUENCY(MATCH(E3:$E$21;E3:$E$21;0);MATCH(E3:$E$21;E3:$E$21;0)) = COUNTIF($E$3:$E$10002; E3)
+# =FREQUENCY(MATCH(E3:$E$21;E3:$E$21;0);MATCH(E3:$E$21;E3:$E$21;0)) = COUNTIF($E$3:$E$10002; E3)
+# =FREQUENCY(MATCH(E3:$E$21;E3:$E$21;0);MATCH(E3:$E$21;E3:$E$21;0)) = COUNTIF($E$3:$E$10002; E3)
 
 class Excel:
     """ To save FSSP data in excel format. """
