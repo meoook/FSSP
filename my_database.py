@@ -11,8 +11,7 @@ class DataBase:
         # Прикручиваем LOGGER
         if log_handler is None:
             def log_pass(*args, **kwargs):
-                print('DataBase class ERROR: Log handler not found.', args[0].format(*args[2:]))
-
+                print('\33[91mDbLocal class ERROR: Log handler not found. \33[93mMSG:\33[0m', args[0].format(*args[2:]))
             self.__to_log = log_pass
         else:
             self.__to_log = log_handler
@@ -84,8 +83,7 @@ class DbLocal:
         # Прикручиваем LOGGER
         if log_handler is None:
             def log_pass(*args, **kwargs):
-                print('DbLocal class ERROR: Log handler not found.', args[0].format(*args[2:]))
-
+                print('\33[91mDbLocal class ERROR: Log handler not found. \33[93mMSG:\33[0m', args[0].format(*args[2:]))
             self.__to_log = log_pass
         else:
             self.__to_log = log_handler
@@ -128,7 +126,7 @@ class DbLocal:
         c_sum = conditions.pop('c_sum', False)  # Возможно по ФИО - но это не точно )
         date_start = conditions.pop('start', False)
         date_end = conditions.pop('end', False)
-        self.__to_log('Table conditions: uniq = {}, start = {},  end = {}, user = {}', 3,
+        self.__to_log('Table conditions: uniq = {}, start = {}, end = {}, user = {}', 3,
                       uniq, date_start, date_end, c_sum)
 
         time = 'min(v.time)' if uniq else 'v.time'

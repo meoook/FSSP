@@ -1,6 +1,4 @@
+y = 533
+y = y // 20 * 20
 
-
-
-xx = 'DB INFO Visits: {0:40}, Last visit:'.format('718934972.123123123')
-
-print(xx)
+print(y)

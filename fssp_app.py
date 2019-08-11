@@ -3,18 +3,15 @@ Version: 0.81
 Author: meok
 
 CHANGE LOG
-TO DO: CHECK PATH
-v0.9.1: Colors in logger
-v0.9:   Adding logging
-v0.8:   Adding buttons behaviour when settings changes or connect DB or FSSP (threads)
-        Config default button
-v0.8:   ToolBar several fixes
-v0.7:   Own calendar class
-v0.6:   Adding TreeView
-v0.5:   Adding ToolBar
-v0.4:   Adding MenuBar
-v0.3:
-    1. Making GUI for application
+NEXT Vers: Remake settings frame. CHECK PATH. Send mail.
+v1.0:   Bugs fixed.
+v0.9:   Excel saving
+v0.8:   ToolBar several fixes. Settings frame default button.
+v0.7:   Logger all classes
+v0.6:   ToolBar full remake
+v0.5:   Own calendar class
+v0.4:   Settings Frame
+v0.3:   Creating basic GUI
 """
 import configparser
 import time
@@ -22,11 +19,13 @@ import re
 import os
 import tkinter as tk
 import threading
+from tkinter.filedialog import asksaveasfile
 from tkinter import ttk
 from myCal import DateEntry, CalPopup
 from my_database import DbLocal, DataBase
 from fssp import FSSP
 from my_colors import Color
+from my_excel import Excel
 
 
 class App(tk.Tk):
@@ -143,7 +142,7 @@ class App(tk.Tk):
         self.btn_search.pack(side='left', fill='both', ipadx=5, padx=1)
         self.bind_hover(self.btn_search)
 
-        self.btn_save = tk.Button(toolbar, command=self.__save_data, image=self.save_ico, bg=Color.bg, state='disabled',
+        self.btn_save = tk.Button(toolbar, command=self.__save_data, image=self.save_ico, bg=Color.bg,
                                   bd=0, highlightbackground=Color.bg_hl)
         self.btn_save.pack(side='left', fill='both', ipadx=4)
         self.bind_hover(self.btn_save)
@@ -153,7 +152,7 @@ class App(tk.Tk):
         self.btn_mail.pack(side='left', fill='both', ipadx=4, padx=1)
         self.bind_hover(self.btn_mail)
 
-        author = tk.Label(toolbar, font=('Console', 9, 'bold'), text='Version: 0.82 \nAuthor: meok', bg='#6CF')
+        author = tk.Label(toolbar, font=('Console', 9, 'bold'), text='Version: 1.00 \nAuthor: meok', bg='#6CF')
         author.pack(side='left', fill='both', expand=True)
 
     # GUI Element behaviour
@@ -300,19 +299,28 @@ class App(tk.Tk):
                           'user': self.cfg['POSTGRES']['USER'], 'pwd': self.cfg['POSTGRES']['PWD']}, self._to_log)
         fssp = FSSP(self.cfg['FSSP.RU']['TOKEN'], self.cfg['FSSP.RU']['PAUSE'], self.cfg['FSSP.RU']['URL'],
                     self._to_log)
-        db.visits = db_pg.select_sql(db.visits[4])  # Select visits and then insert in local DB
+        db.visits = db_pg.select_sql(db.visits[4])  # Select visits from last visit and then insert in local DB
         db_pg.close()
-        if db.data:                 # New users from visits
+        fssp_req_data = db.data
+        if fssp_req_data:                 # New users from last update
             self.__busy.config(image=self.btn_r_ico)  # Turn light - RED
-            fssp.arr = db.data      # Request FSSP with new users.
-            for x in fssp.arr:      # Insert new sums for users\visits
-                db.data = ('sum', *x[1:5], time.strftime("%Y-%m-%d", time.localtime()), x[5])
+            while len(fssp_req_data) != 0:
+                if len(fssp_req_data) > 3:
+                    req = [fssp_req_data.pop(), fssp_req_data.pop(), fssp_req_data.pop()]
+                else:
+                    req = [fssp_req_data.pop() for i in range(len(fssp_req_data))]
+                fssp.arr = req          # Request FSSP with new users.
+                for x in fssp.arr:      # Insert new sums for users\visits
+                    db.data = ('sum', *x[1:5], time.strftime("%Y-%m-%d", time.localtime()), x[5])
         self.__busy.config(image=self.btn_g_ico)  # Turn light - GREEN
         self.__trace_connections.set(1)
 
     def __save_data(self):
-        print('SAVING ))')
-        pass
+        filename = asksaveasfile(title="Select file", filetypes=(("Excel files", "*.xlsx"), ("all files", "*.*")), defaultextension=("Excel files", "*.xlsx"))
+        if filename:
+            filename.close()
+            xls = Excel(str(filename.name), self._to_log)
+            xls.data_from_db()
 
     def __show_frame(self, context):  # Вывод на передний план фрейма
         self.__frames[context].tkraise()
@@ -431,7 +439,7 @@ class MainF(tk.Frame):
         self.__tree.column('csum', width=130, anchor=tk.W)
         self.__tree.column('comm', width=250, anchor=tk.W, stretch=True)
         self.__tree.column('jail', width=80, anchor=tk.CENTER)
-        self.__tree.column('sum', width=110, anchor=tk.CENTER)
+        self.__tree.column('sum', width=110, anchor=tk.E)
 
         self.__tree.heading('dt', text='Время')
         self.__tree.heading('adr', text='Адрес')
@@ -448,13 +456,12 @@ class MainF(tk.Frame):
         self.__db = DbLocal('fssp', controller._to_log)
         #self.filter = {'uniq': False}
 
-    def view_records(self):
+    def __view_records(self):
         [self.__tree.delete(i) for i in self.__tree.get_children()]
         [self.__tree.insert('', 'end', values=row) for row in self.__db.table]
 
     def __select_record(self, event):
         PopUp(self.__tree, self.__db)
-        pass
 
     @property
     def filter(self):
@@ -463,7 +470,7 @@ class MainF(tk.Frame):
     @filter.setter
     def filter(self, conditions):
         self.__db.table = conditions
-        self.view_records()
+        self.__view_records()
 
 
 class SettingsF(tk.Frame):
@@ -649,9 +656,10 @@ class PopUp(tk.Toplevel):
         self.row_id = tree.selection()[0]  # row ID
         self.__tree = tree
         self.__db = db
-        x = tree.winfo_rootx() + 240
-        y = tree.winfo_rooty() + 25 + tree.index(self.row_id) * 20   # 25 - headers, 20 - row height проверить на > 15
-        self.geometry('+{}+{}'.format(x, y))    # Смещение окна
+        x, y = tree.winfo_pointerxy()
+        x = tree.winfo_rootx() + 390
+        #y = tree.winfo_rooty() + 25 + tree.index(self.row_id) * 20   # 25 - headers, 20 - row height проверить на > 15
+        self.geometry('+{}+{}'.format(x+5, y-10))    # Смещение окна
         self.overrideredirect(1)                # Убрать TitleBar
         self.title('Добавить доходы\расходы')
         self.bind('<FocusOut>', lambda event: self.destroy())   # When PopUp lose focus
