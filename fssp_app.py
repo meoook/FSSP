@@ -302,6 +302,7 @@ class App(tk.Tk):
         db.visits = db_pg.select_sql(db.visits[4])  # Select visits from last visit and then insert in local DB
         db_pg.close()
         fssp_req_data = db.data
+        print(fssp_req_data)
         if fssp_req_data:                 # New users from last update
             self.__busy.config(image=self.btn_r_ico)  # Turn light - RED
             while len(fssp_req_data) != 0:

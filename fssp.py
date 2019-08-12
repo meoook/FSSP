@@ -75,6 +75,10 @@ class FSSP:
             if self.__uuid_get(arr):
                 if self.__uuid_wait_finish():
                     self.__uuid_result()
+            else:
+                self.__to_log('Wait {} seconds. Spam defence', 3, self.pause)
+                time.sleep(int(self.pause))
+
         else:
             self.__to_log('Input type not valid: {}. Use "List" instead.', 2, type(array))
 
@@ -229,4 +233,3 @@ if __name__ == '__main__':
     #app.arr = req_arr
     app.arr = "hgjgjhgjgjmghjh"
     print(app.arr)
-

@@ -38,6 +38,8 @@ class DataBase:
             self.__to_log('Unable to select. Db connection error.', 2)
             return False
         date = date if (date and date.count('-') == 2 and len(date) in (10, 19)) else '18.02.2019'  # Start date
+        '''
+
         # Home version
         select = "SELECT upper(lastname), upper(firstname), upper(secondname), to_char(birthday, 'DD.MM.YYYY'), " \
                  "md5(concat(upper(lastname), upper(firstname), upper(secondname), to_char(birthday, 'DD.MM.YYYY')))," \
@@ -47,21 +49,20 @@ class DataBase:
         '''
         select = "SELECT " \
                  "upper(v.last_name), upper(v.first_name), upper(v.patronymic), to_char(v.birthdate, 'DD.MM.YYYY'), " \
-                 "to_char(c.creation_date, 'DD.MM.YYYY hh24:mi:ss'), o.address, u.\"number\", " \
-                 "CASE WHEN mia_check_result = 1 THEN 'МВД' ELSE 'ФССП' END, " \
-                 "md5(concat(upper(v.last_name), upper(v.first_name), upper(v.patronymic), v.birthdate::date)) " \
+                 "md5(concat(upper(v.last_name), upper(v.first_name), upper(v.patronymic), v.birthdate::date)), " \
+                 "to_char(c.creation_date, 'YYYY-MM-DD hh24:mi:ss'), o.address, u.\"number\", " \
+                 "CASE WHEN mia_check_result = 1 THEN 'МВД' ELSE 'ФССП' END " \
                  "FROM visitor_violation_checks AS c " \
                  "RIGHT JOIN visitors AS v ON c.visitor_id = v.id " \
                  "RIGHT JOIN court_objects AS o ON v.court_object_id = o.id " \
                  "RIGHT JOIN court_stations AS u ON v.court_station_id = u.id " \
                  "WHERE v.court_object_id not IN (173, 174) " \
                  "AND (mia_check_result = 1 OR fssp_check_result = 1) " \
-                 f"AND v.creation_date > {date} ORDER BY v.creation_date DESC"
-        '''
+                 f"AND v.creation_date > '{date}' ORDER BY v.creation_date DESC"
         self.__cur.execute(select)
         self.__to_log('SQL request return {} rows. Conditions: {}', 3,
-                      str(self.__cur.rowcount), select[259:-29].upper(), c1=Color.inf, c2=Color.info)
-        # , 3, str(self.cur.rowcount), select[632:-29].upper(), c1='#EE4', c2='#EE4')
+                      #str(self.__cur.rowcount), select[259:-29].upper(), c1=Color.inf, c2=Color.info)
+                      str(self.__cur.rowcount), select[632:-29].upper(), c1=Color.inf, c2=Color.info)
         return self.__cur.fetchall()
 
     # Закрываем соединение с БД - не понятно, работает ли :)
@@ -150,6 +151,7 @@ class DbLocal:
             where += f"v.time < '{date_end}' "
         if c_sum or date_start or date_end:
             first += where
+        print(first+last)
         self.__table = self.__c.execute(first + last).fetchall()
 
     @property
@@ -162,7 +164,7 @@ class DbLocal:
                                 FROM visits AS v 
                                 LEFT JOIN users AS u ON u.id=v.u_id 
                                 GROUP BY u.id)''').fetchone()
-        info += self.__c.execute('''SELECT MAX(time) FROM visits''').fetchone()
+        info += self.__c.execute('''SELECT strftime('%Y-%m-%d %H:%M:%S', MAX(time)) FROM visits''').fetchone()
         self.__to_log('DB INFO Visits: {} Users: {}, FSSP: {}, PaySum: {}, Last visit: {}', 3, *info)
         return info
 

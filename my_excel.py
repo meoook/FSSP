@@ -41,6 +41,7 @@ class Excel:
                 # HighLight formats
                 fmt_hl_red = self.__workbook.add_format({'bg_color': '#FFCCCC', 'font_color': '#FF0000'})
                 fmt_hl_green = self.__workbook.add_format({'bg_color': '#CCFFCC', 'font_color': '#005500'})
+                fmt_hl_green2 = self.__workbook.add_format({'bg_color': '#CCFFCC'})
                 fmt_hl_yellow = self.__workbook.add_format({'bg_color': '#FFFF00'})
                 # Table formats
                 fmt_h2 = self.__workbook.add_format({'bg_color': '#77BBF0', **self.__fmt_h_def})
@@ -95,6 +96,9 @@ class Excel:
                                                          'criteria': '==',
                                                          'value': '"ЗАДЕРЖАН"',
                                                          'format': fmt_hl_red})
+                    obj.conditional_format('H3:H10000', {'type': 'formula',
+                                                         'criteria': '=FREQUENCY(MATCH(E3:$E$21,E3:$E$21,0),MATCH(E3:$E$21,E3:$E$21,0)) = COUNTIF($E$3:$E$10002, E3)',
+                                                         'format': fmt_hl_green2})
                     obj.conditional_format('H3:H10000', {'type': 'formula',
                                                          'criteria': '=COUNTIF($E$3:$E$10000, E3)>1',
                                                          'format': fmt_hl_yellow})
