@@ -75,7 +75,7 @@ class FSSP:
             if self.__uuid_get(arr):
                 if self.__uuid_wait_finish():
                     self.__uuid_result()
-            else:
+            else:       # А нужно ли ? - продебажить
                 self.__to_log('Wait {} seconds. Spam defence', 3, self.pause)
                 time.sleep(int(self.pause))
 

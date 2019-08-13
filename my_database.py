@@ -38,7 +38,7 @@ class DataBase:
             self.__to_log('Unable to select. Db connection error.', 2)
             return False
         date = date if (date and date.count('-') == 2 and len(date) in (10, 19)) else '2019-02-18'  # Start date
-
+        '''
         # Home version
         select = "SELECT upper(lastname), upper(firstname), upper(secondname), to_char(birthday, 'DD.MM.YYYY'), " \
                  "md5(concat(upper(lastname), upper(firstname), upper(secondname), to_char(birthday, 'DD.MM.YYYY')))," \
@@ -58,7 +58,7 @@ class DataBase:
                  "WHERE v.court_object_id not IN (173, 174) " \
                  "AND (mia_check_result = 1 OR fssp_check_result = 1) " \
                  f"AND v.creation_date > '{date}' ORDER BY v.creation_date DESC"
-         '''
+
         self.__cur.execute(select)
         self.__to_log('SQL request return {} rows. Conditions: {}', 3,
                       #str(self.__cur.rowcount), select[259:-29].upper(), c1=Color.inf, c2=Color.info)
@@ -199,7 +199,7 @@ class DbLocal:
     @property
     def data(self):
         """ Return array with users to refresh data (to get sums from fssp.ru) """
-        last_update = self.__c.execute('''SELECT MAX(DATE(up_date,'+1 day')) FROM sums''').fetchone()[0]
+        last_update = self.__c.execute('''SELECT MAX(DATE(up_date)) FROM sums''').fetchone()[0]  # DATE(up_date,'+1 day')
         last_update = last_update if last_update else 0  # Cos return None if no updates before
         self.__c.execute(f'''SELECT u."first", u.name, u."second", u.dr, v.time FROM visits AS v LEFT JOIN users 
                             AS u ON u.id=v.u_id WHERE v.time > '{last_update}' GROUP BY u.id''')
