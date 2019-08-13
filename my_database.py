@@ -29,7 +29,7 @@ class DataBase:
             self.__cur = None
         else:
             self.__cur = self.__conn.cursor()
-            self.__to_log('DB connected - {}', 3, 'OK', c1=Color.ok)
+            self.__to_log('DB {} connected - {}', 3, pa['dbname'], 'OK', c1=Color.inf, c2=Color.ok)
 
     # Делаем SELECT
     def select_sql(self, date):
@@ -37,8 +37,7 @@ class DataBase:
         if not self.__conn:
             self.__to_log('Unable to select. Db connection error.', 2)
             return False
-        date = date if (date and date.count('-') == 2 and len(date) in (10, 19)) else '18.02.2019'  # Start date
-        '''
+        date = date if (date and date.count('-') == 2 and len(date) in (10, 19)) else '2019-02-18'  # Start date
 
         # Home version
         select = "SELECT upper(lastname), upper(firstname), upper(secondname), to_char(birthday, 'DD.MM.YYYY'), " \
@@ -59,6 +58,7 @@ class DataBase:
                  "WHERE v.court_object_id not IN (173, 174) " \
                  "AND (mia_check_result = 1 OR fssp_check_result = 1) " \
                  f"AND v.creation_date > '{date}' ORDER BY v.creation_date DESC"
+         '''
         self.__cur.execute(select)
         self.__to_log('SQL request return {} rows. Conditions: {}', 3,
                       #str(self.__cur.rowcount), select[259:-29].upper(), c1=Color.inf, c2=Color.info)
@@ -117,7 +117,7 @@ class DbLocal:
 
     @property
     def table(self):
-        """ Return visits (to insert in other class like tk.treeview) """
+        """ Return visits array for conditions """
         return self.__table
 
     @table.setter
@@ -151,7 +151,6 @@ class DbLocal:
             where += f"v.time < '{date_end}' "
         if c_sum or date_start or date_end:
             first += where
-        print(first+last)
         self.__table = self.__c.execute(first + last).fetchall()
 
     @property
@@ -214,15 +213,16 @@ class DbLocal:
                           c1=Color.hl, c2=Color.hl, c3=Color.hl1, c4=Color.hl2)
             u_id = self.__c.execute('''SELECT id FROM users WHERE "first"=? AND name=? AND "second"=? AND dr=?''',
                                     (data[1].upper(), data[2].upper(), data[3].upper(), data[4])).fetchone()
+            value = '' if not data[6] or data[6] == 'None' else data[6]
             if u_id:
                 if data[0] == 'comment':
-                    self.__c.execute(f"UPDATE visits SET comment='{data[6]}' WHERE time='{data[5]}' AND u_id={u_id[0]}")
+                    self.__c.execute(f"UPDATE visits SET comment='{value}' WHERE time='{data[5]}' AND u_id={u_id[0]}")
                 elif data[0] == 'jail':
-                    self.__c.execute(f"UPDATE visits SET jail='{data[6]}' WHERE time='{data[5]}' AND u_id={u_id[0]}")
+                    self.__c.execute(f"UPDATE visits SET jail='{value}' WHERE time='{data[5]}' AND u_id={u_id[0]}")
                 elif data[0] == 'sum':
-                    self.__c.execute(f"UPDATE sums SET sum={data[6]} WHERE up_date='{data[5]}' AND u_id={u_id[0]}")
+                    self.__c.execute(f"UPDATE sums SET sum={value} WHERE up_date='{data[5]}' AND u_id={u_id[0]}")
                     if self.__c.rowcount == 0:
-                        self.__c.execute(f"INSERT INTO sums(u_id, up_date, sum) VALUES (?, ?, ?)", (*u_id, data[5], data[6]))
+                        self.__c.execute(f"INSERT INTO sums(u_id, up_date, sum) VALUES (?, ?, ?)", (*u_id, data[5], value))
                 else:
                     self.__to_log('Wrong column name: {}', 2, data[0])
             else:
@@ -231,7 +231,7 @@ class DbLocal:
             self.__to_log('Wrong data. Use tuple with format: (Column Name, F, I, O, dr, Time, Data to insert)', 2)
 
     def __u_sums_get(self):
-        """ Get array of control sums """
+        """ Get array of control sums. To check uniq before adding. """
         self.__c.execute('''SELECT c_sum FROM users''')
         self.__u_sums = [x[0] for x in self.__c.fetchall()]
 

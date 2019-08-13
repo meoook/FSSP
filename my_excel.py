@@ -151,7 +151,7 @@ class Excel:
                     obj.write(3, 6, f'=SUM(G5:G{row_idx})', fmt_h2_money)
 
     def __workbook_can_create(self):
-        try:        # Using this cos xlsxwriter.Workbook don't raise error
+        try:        # Using this cos xlsxwriter.Workbook don't raise error - remove cos same in FSPP.__save_data()
             f_tmp = open(self.f_name, 'w')
         except Exception as err:
             self._to_log('{}', 1, err)

@@ -218,7 +218,7 @@ class App(tk.Tk):
                 else:
                     return True
 
-        def result_dir(obj):    # Проверием папки для файла с результатами
+        def result(obj):    # Проверием папки для файла с результатами
             if self.cfg['OPTIONS']['SAVE_TO_FILE'] == 'ON':
                 if os.path.isdir(obj.cfg['PATH']['DIR']):  # Проверка основной папки
                     print('Main folder\33[93m', obj.cfg['PATH']['DIR'], '\33[0mexist - \33[32mOK\33[0m')
@@ -238,43 +238,19 @@ class App(tk.Tk):
                 print('No save file will be used.\33[0m')
                 return False
 
-        def result(obj):    # Создаем файл с результатами
-            if result_dir(obj) and obj.cfg['OPTIONS']['SAVE_TO_FILE'] == 'ON':
-                res_file_path = obj.cfg['PATH']['DIR'] + obj.cfg['PATH']['RES_FILENAME']
-                if not os.path.isfile(res_file_path) or obj.cfg['OPTIONS']['FILE_RENEW'] == 'ON':
-                    try:
-                        file_head = ['Время', 'Адрес', 'Участок', 'Реестр', 'Контрольная сумма', 'Комментарий',
-                                     'Задержан', 'Сумма штрафов']
-                        filo = open(res_file_path, "w")
-                        filo.write(";".join(file_head) + '\n')
-                        filo.close()
-                        print("Result file\33[93m", res_file_path, '\33[0mcreated - \33[32mOK\33[0m')
-                    except IOError as e:
-                        print('Result file:\33[93m', res_file_path, '\33[0mcreating - \33[91mfail.', e, '\33[0m')
-                        print('\33[93mSet SAVE_RESULT = False\33[0m')
-                        obj.cfg.set('OPTIONS', 'SAVE_TO_FILE', 'OFF')
-                        return False
-                    else:
-                        return True
-                else:
-                    print('Result file\33[93m', res_file_path, '\33[0mexist - \33[32mOK\33[0m')
-            return True
-
         if path_type == 'all':
             self._to_log("Application directory: {}", 3, cur_dir)
             # Проверием структуру файлов\папок
-            if self.cfg['OPTIONS']['SAVE_TO_FILE'] == 'ON' or self.cfg['LOGS']['SAVE'] == 'ON':
+            if self.cfg['LOGS']['SAVE'] == 'ON':
                 self._to_log('Checking folders structure...')
-                return True if (logs(self) and result_dir(self)) else False
+                return logs(self)
             else:
                 self._to_log('No files will be used {}.', 3, 'Echo mode', c=Color.inf)
                 return True
         elif path_type == 'logs':
-            return True if logs(self) else False
-        elif path_type == 'r_dir':
-            return True if result_dir(self) else False
+            return logs(self)
         elif path_type == 'result':
-            return True if result(self) else False
+            return result(self)
         return False
 
     def __init_connections(self):
@@ -302,7 +278,6 @@ class App(tk.Tk):
         db.visits = db_pg.select_sql(db.visits[4])  # Select visits from last visit and then insert in local DB
         db_pg.close()
         fssp_req_data = db.data
-        print(fssp_req_data)
         if fssp_req_data:                 # New users from last update
             self.__busy.config(image=self.btn_r_ico)  # Turn light - RED
             while len(fssp_req_data) != 0:
@@ -317,8 +292,13 @@ class App(tk.Tk):
         self.__trace_connections.set(1)
 
     def __save_data(self):
-        filename = asksaveasfile(title="Select file", filetypes=(("Excel files", "*.xlsx"), ("all files", "*.*")), defaultextension=("Excel files", "*.xlsx"))
-        if filename:
+        try:
+            filename = asksaveasfile(title="Select file", filetypes=(("Excel files", "*.xlsx"), ("all files", "*.*")),
+                                     defaultextension=("Excel files", "*.xlsx"), initialdir=self.cfg['PATH']['DIR'], initialfile=self.cfg['PATH']['RES_FILENAME'])    # , initialfile, mode = 'w'
+        except Exception as err:
+            self._to_log('Unable to open file: {}', 1, err)
+            return False
+        else:
             filename.close()
             xls = Excel(str(filename.name), self._to_log)
             xls.data_from_db()
@@ -339,7 +319,7 @@ class App(tk.Tk):
         self.cfg.set('OPTIONS', 'SAVE_SQLITE', config.get('OPTIONS', 'SAVE_SQLITE', fallback='OFF'))
         self.cfg.add_section('PATH')  # PATH CONFIG
         self.cfg.set('PATH', 'DIR', config.get('PATH', 'DIR', fallback='C:\\tmp\\'))
-        self.cfg.set('PATH', 'RES_FILENAME', config.get('PATH', 'RES_FILENAME', fallback='fssp.csv'))
+        self.cfg.set('PATH', 'RES_FILENAME', config.get('PATH', 'RES_FILENAME', fallback='fssp.xlsx'))
         self.cfg.add_section('POSTGRES')  # PG_SQL CONFIG
         self.cfg.set('POSTGRES', 'HOST', config.get('POSTGRES', 'HOST', fallback='localhost'))
         self.cfg.set('POSTGRES', 'DBNAME', config.get('POSTGRES', 'DBNAME', fallback='skuns'))
@@ -774,7 +754,7 @@ class PopUp(tk.Toplevel):
             self.__tree.set(self.row_id, 'jail', 'ЗАДЕРЖАН')
             self.__db.data = ('jail', *self.row[0:4], date, 'ЗАДЕРЖАН')
         else:
-            self.__tree.set(self.row_id, 'jail', 'None')
+            self.__tree.set(self.row_id, 'jail', '')
             self.__db.data = ('jail', *self.row[0:4], date, None)
 
         self.destroy()

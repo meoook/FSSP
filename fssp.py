@@ -16,7 +16,7 @@ class FSSP:
         super().__init__()
         self.token = token
         self.url = url
-        self.pause = int(pause) if int(pause) < 5 else 5  # Minimum value for pause
+        self.pause = int(pause) if int(pause) > 5 else 5  # Minimum value for pause
         self.region = 77    # Default - Moscow
         self.__result = []
         # Прикручиваем LOGGER
