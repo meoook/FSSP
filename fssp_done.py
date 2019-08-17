@@ -1,12 +1,12 @@
 import os
 import re
 import configparser
-import calendar
+from calendar import TextCalendar
 import xlsxwriter
 import requests
 import psycopg2
 import sqlite3
-import threading
+from threading import Thread
 import time
 import tkinter as tk
 from datetime import datetime
@@ -234,7 +234,7 @@ class App(tk.Tk):
                 self._to_log('Already connecting. Wait while finish.', 3)
                 return False
         self._to_log('Trying connections...', 3)
-        thr = threading.Thread(target=self.__connections)
+        thr = Thread(target=self.__connections)
         self.__threads.append(thr)
         thr.start()
         return True
@@ -1172,7 +1172,7 @@ class CalPopup(tk.Label):
     def __matrix_change(self):
         self.__curr_m_name.set(self.__month_names[self.__curr[1]])
         self.__curr_y_name.set(self.__curr[0])
-        cal_array = list(calendar.TextCalendar(firstweekday=0).itermonthdays4(self.__curr[0], self.__curr[1]))
+        cal_array = list(TextCalendar(firstweekday=0).itermonthdays4(self.__curr[0], self.__curr[1]))
         row = 0
         for i, day in enumerate(cal_array):
             self.__day_vars[i].set(day[2])
