@@ -130,7 +130,7 @@ class App(tk.Tk):
         self.btn_mail = tk.Button(toolbar, command=self.__save_data, image=self.mail_ico, bg=Color.bg, state='disabled', bd=0, highlightbackground=Color.bg_hl)
         self.btn_mail.pack(side='left', fill='both', ipadx=4, padx=1)
         self.bind_hover(self.btn_mail)
-        author = tk.Label(toolbar, font=('Console', 9, 'bold'), text='Version: 1.00 \nAuthor: meok', bg='#6CF')
+        author = tk.Label(toolbar, font=('Console', 9, 'bold'), text='Version: 1.01 \nAuthor: meok', bg='#6CF')
         author.pack(side='left', fill='both', expand=True)
 
     def __tool_bar_btn(self, where=None):
@@ -829,7 +829,7 @@ class DbLocal:
                 elif data[0] == 'jail':
                     self.__c.execute(f"UPDATE visits SET jail='{value}' WHERE time='{data[5]}' AND u_id={u_id[0]}")
                 elif data[0] == 'sum':
-                    self.__c.execute(f"UPDATE sums SET sum={value} WHERE up_date='{data[5]}' AND u_id={u_id[0]}")
+                    self.__c.execute(f"UPDATE sums SET sum='{value}' WHERE up_date='{data[5]}' AND u_id={u_id[0]}")
                     if self.__c.rowcount == 0:
                         self.__c.execute(f"INSERT INTO sums(u_id, up_date, sum) VALUES (?, ?, ?)", (*u_id, data[5], value))
                 else:

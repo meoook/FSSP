@@ -220,7 +220,7 @@ class DbLocal:
                 elif data[0] == 'jail':
                     self.__c.execute(f"UPDATE visits SET jail='{value}' WHERE time='{data[5]}' AND u_id={u_id[0]}")
                 elif data[0] == 'sum':
-                    self.__c.execute(f"UPDATE sums SET sum={value} WHERE up_date='{data[5]}' AND u_id={u_id[0]}")
+                    self.__c.execute(f"UPDATE sums SET sum='{value}' WHERE up_date='{data[5]}' AND u_id={u_id[0]}")
                     if self.__c.rowcount == 0:
                         self.__c.execute(f"INSERT INTO sums(u_id, up_date, sum) VALUES (?, ?, ?)", (*u_id, data[5], value))
                 else:
